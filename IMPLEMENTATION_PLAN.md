@@ -10,7 +10,7 @@ This plan turns [the gameplay overview](GAMEPLAY_OVERVIEW.md) into a small, play
 - Economy, progression, combat, universe, fleet missions, persistence, and event-time simulation are separate modules under `src/game/`; the interface is in `src/app.js`.
 - The game supports building/research/ship queues; attack, espionage, transport, harvest, and colonization missions; NPC respawns; battle reports; plunder; debris; and offline catch-up.
 - Rules and catalogs are provisional single-player values in `src/game/catalog.js`. Treat them as tuning defaults rather than confirmed original-game balance.
-- Automated verification: `npm test` currently covers 16 gameplay and persistence cases.
+- Automated verification: `npm test` currently covers 19 gameplay and persistence cases.
 - The shared shell follows the live SFC structure with a user-refined dark gray-on-black palette. The Overview is an empire-wide colony table; Colony Overview opens the selected planet dashboard; Universe is a navigable 15-row slot table with a points-of-interest sidebar.
 
 ## Decisions and constraints
@@ -100,3 +100,10 @@ Keep static catalogs separate from saves: buildings, technologies, ships, missio
 - Confirm which exact original/SFC2 rules to use for building timers, research effects, ship stats, battle outcomes, plunder, and debris before tuning the initial data catalog.
 - Revisit deterministic expected-value combat if the desired single-player feel requires randomized, per-battle ship losses.
 - Keep the exact contents and actions for orbital positions open; only the 15-slot, 8-berth/7-orbit structure is defined so far.
+
+## Future building concepts — parked, not implemented
+
+- **Space Elevator (moon system):** Link a moon to its parent planet so the moon can borrow some or all of that planet's Foundry construction-speed bonus. Keep the strength, cost, and whether it affects shipbuilding configurable until moon gameplay is designed.
+- **Robotics Factory:** Give it a distinct automation role later, such as enabling additional queued construction or automatic repeatable build orders. It intentionally has no effect in the current prototype.
+- **Sensor Array:** Reveal NPC strength, debris, or other points of interest across nearby systems, giving the player a scouting investment alongside espionage fleets.
+- **Defense Grid:** Convert planetary energy into passive protection or defensive fire, creating a tradeoff between resource production and colony safety.
