@@ -531,7 +531,7 @@ footer { border-color: #28363c; color: #778589; }
   --green: #9ab5a0;
   --amber: #d3d9db;
   --red: #d58c91;
-  --command-width: 1600px;
+  --command-width: 1067px;
   --command-gutter: clamp(12px, 2vw, 24px);
   background: var(--page);
   color: var(--text);
