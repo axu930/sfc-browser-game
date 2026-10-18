@@ -7,11 +7,20 @@ function positiveLevel(value) {
   return Number.isFinite(level) && level > 0 ? level : 0;
 }
 
-function storageCapacity(planet) {
-  const base = Number(GAME_RULES.defaultStorage) || 0;
-  const depot = BUILDINGS.storageDepot;
-  const perLevel = Number(depot?.storage) || 0;
-  return Math.max(0, base + perLevel * positiveLevel(planet?.buildings?.storageDepot));
+export function getMineLevelMultiplier(levelValue, growthValue = 1.3) {
+  const level = positiveLevel(levelValue);
+  const growth = Math.max(1, Number(growthValue) || 1);
+  return level ? level * Math.pow(growth, level) : 0;
+}
+
+function storageCapacities(planet) {
+  const base = Math.max(0, Number(GAME_RULES.defaultStorage) || 0);
+  return Object.fromEntries(RESOURCE_KEYS.map(resource => {
+    const facility = Object.values(BUILDINGS).find(definition => definition.storageResource === resource);
+    const level = positiveLevel(planet?.buildings?.[facility?.id]);
+    const perLevel = Math.max(0, Number(facility?.storageCapacity) || base);
+    return [resource, base + perLevel * (Math.pow(2, level) - 1)];
+  }));
 }
 
 /** Calculate energy-adjusted output rates and planetary storage capacity. */
@@ -21,7 +30,7 @@ export function getPlanetProduction(planet) {
     return {
       energy: { production: 0, consumption: 0, efficiency: 0 },
       productionPerHour,
-      storageCapacity: 0
+      storageCapacity: Object.fromEntries(RESOURCE_KEYS.map(key => [key, 0]))
     };
   }
 
@@ -30,7 +39,10 @@ export function getPlanetProduction(planet) {
   for (const [id, definition] of Object.entries(BUILDINGS)) {
     const level = positiveLevel(planet.buildings?.[id]);
     energyProduction += Math.max(0, Number(definition.energyProduction) || 0) * level;
-    energyConsumption += Math.max(0, Number(definition.energyUse) || 0) * level;
+    const levelMultiplier = definition.mineGrowth
+      ? getMineLevelMultiplier(level, definition.mineGrowth)
+      : level;
+    energyConsumption += Math.max(0, Number(definition.energyUse) || 0) * levelMultiplier;
   }
 
   const energyEfficiency = energyConsumption <= EPSILON
@@ -39,9 +51,12 @@ export function getPlanetProduction(planet) {
   for (const [id, definition] of Object.entries(BUILDINGS)) {
     const level = positiveLevel(planet.buildings?.[id]);
     if (!level || !definition.production) continue;
+    const levelMultiplier = definition.mineGrowth
+      ? getMineLevelMultiplier(level, definition.mineGrowth)
+      : level;
     for (const resource of RESOURCE_KEYS) {
       const perLevel = Math.max(0, Number(definition.production[resource]) || 0);
-      productionPerHour[resource] += perLevel * level * energyEfficiency;
+      productionPerHour[resource] += perLevel * levelMultiplier * energyEfficiency;
     }
   }
 
@@ -52,7 +67,7 @@ export function getPlanetProduction(planet) {
       efficiency: energyEfficiency
     },
     productionPerHour,
-    storageCapacity: storageCapacity(planet)
+    storageCapacity: storageCapacities(planet)
   };
 }
 
@@ -69,7 +84,7 @@ export function advancePlanetEconomy(planet, elapsedSeconds) {
     return {
       elapsedSeconds: seconds,
       energy: { production: 0, consumption: 0, efficiency: 0 },
-      storageCapacity: 0,
+      storageCapacity: Object.fromEntries(RESOURCE_KEYS.map(key => [key, 0])),
       productionPerHour: Object.fromEntries(RESOURCE_KEYS.map((key) => [key, 0])),
       produced: Object.fromEntries(RESOURCE_KEYS.map((key) => [key, 0]))
     };
@@ -79,12 +94,13 @@ export function advancePlanetEconomy(planet, elapsedSeconds) {
   planet.buildings ??= {};
 
   const production = getPlanetProduction(planet);
-  const capacity = production.storageCapacity;
+  const capacities = production.storageCapacity;
   const produced = Object.fromEntries(RESOURCE_KEYS.map((key) => [key, 0]));
   for (const resource of RESOURCE_KEYS) {
     const balance = Number(planet.resources[resource]);
     const current = Number.isFinite(balance) ? Math.max(0, balance) : 0;
     const accrued = (production.productionPerHour[resource] * seconds) / 3600;
+    const capacity = capacities[resource];
     const next = current >= capacity ? current : Math.min(capacity, current + accrued);
     planet.resources[resource] = next;
     produced[resource] = next - current;
@@ -93,7 +109,7 @@ export function advancePlanetEconomy(planet, elapsedSeconds) {
   return {
     elapsedSeconds: seconds,
     energy: production.energy,
-    storageCapacity: capacity,
+    storageCapacity: capacities,
     productionPerHour: production.productionPerHour,
     produced
   };

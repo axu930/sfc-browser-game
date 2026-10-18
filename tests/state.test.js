@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createInitialState, loadState, resetState, saveState } from "../src/game/state.js";
+import { createInitialState, loadState, resetState, saveState, SAVE_KEY, SAVE_VERSION } from "../src/game/state.js";
+import { getPlanetProduction } from "../src/game/economy.js";
+import { completeDueQueues } from "../src/game/progression.js";
 
 function memoryStorage() {
   const values = new Map();
@@ -30,4 +32,35 @@ test("reset creates a fresh state using the requested simulation timestamp", () 
   assert.equal(fresh.now, 50_000);
   assert.equal(loadState(storage, 100_000).now, 50_000);
   assert.equal(fresh.fleets.length, 0);
+});
+
+test("version 1 saves migrate the shared depot to resource-specific storage", () => {
+  const storage = memoryStorage();
+  const legacy = createInitialState(1_000);
+  legacy.schemaVersion = 1;
+  legacy.planets[0].buildings.storageDepot = 2;
+  legacy.planets[0].constructionQueue = [{
+    id: "legacy-storage-upgrade", type: "building", target: "storageDepot",
+    startedAt: 1_000, completesAt: 3_000
+  }];
+  delete legacy.planets[0].buildings.oreWarehouse;
+  delete legacy.planets[0].buildings.crystalWarehouse;
+  delete legacy.planets[0].buildings.hydrogenStorage;
+  storage.setItem(SAVE_KEY, JSON.stringify(legacy));
+
+  const migrated = loadState(storage, 2_000);
+  const planet = migrated.planets[0];
+  assert.equal(migrated.schemaVersion, SAVE_VERSION);
+  assert.equal(planet.buildings.storageDepot, undefined);
+  assert.equal(planet.buildings.oreWarehouse, 2);
+  assert.equal(planet.buildings.crystalWarehouse, 2);
+  assert.equal(planet.buildings.hydrogenStorage, 2);
+  assert.deepEqual(getPlanetProduction(planet).storageCapacity, { ore: 40000, crystal: 40000, hydrogen: 40000 });
+
+  // A depot upgrade already in progress must expand all three stores when it completes.
+  migrated.now = 3_000;
+  assert.equal(completeDueQueues(migrated).length, 1);
+  assert.equal(planet.buildings.oreWarehouse, 3);
+  assert.equal(planet.buildings.crystalWarehouse, 3);
+  assert.equal(planet.buildings.hydrogenStorage, 3);
 });

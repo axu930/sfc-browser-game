@@ -1,4 +1,4 @@
-import { BUILDINGS, RESEARCH, RESOURCE_KEYS, SHIPS } from "./catalog.js";
+import { BUILDINGS, BUILD_SPEED_RULES, RESEARCH, RESOURCE_KEYS, SHIPS } from "./catalog.js";
 import { makeId } from "./state.js";
 
 function validLevel(value) {
@@ -14,6 +14,36 @@ function costForLevel(cost, growth, existingLevel) {
   ]));
 }
 
+function costForBuildingLevel(building, existingLevel) {
+  if (building?.costFormula !== "level-exponential") {
+    return costForLevel(building?.cost, building?.growth, existingLevel);
+  }
+  const targetLevel = Math.max(1, existingLevel + 1);
+  const growth = Math.max(1, Number(building.growth) || 1);
+  const multiplier = targetLevel * Math.pow(growth, targetLevel);
+  return Object.fromEntries(RESOURCE_KEYS.map(resource => [
+    resource,
+    Math.max(0, Math.ceil((Number(building.cost?.[resource]) || 0) * multiplier))
+  ]));
+}
+
+function buildDurationSeconds(cost, divisor) {
+  const resourceCost = Math.max(0, Number(cost?.ore) || 0) + Math.max(0, Number(cost?.crystal) || 0);
+  const hours = resourceCost / Math.max(1, Number(divisor) || 1);
+  return Math.max(BUILD_SPEED_RULES.minimumSeconds, hours * 3600);
+}
+
+function foundryMultiplier(level) {
+  return Math.pow(BUILD_SPEED_RULES.foundryLevelFactor, validLevel(level));
+}
+
+function queuedBuildingLevel(planet, buildingId) {
+  const queued = (planet?.constructionQueue ?? []).filter(
+    item => item.type === "building" && item.target === buildingId
+  ).length;
+  return validLevel(planet?.buildings?.[buildingId]) + queued;
+}
+
 function multipliedCost(cost, quantity) {
   return Object.fromEntries(RESOURCE_KEYS.map((resource) => [
     resource,
@@ -25,7 +55,7 @@ function multipliedCost(cost, quantity) {
 export function getBuildingCost(buildingId, currentLevel = 0) {
   const building = BUILDINGS[buildingId];
   if (!building) return null;
-  return costForLevel(building.cost, building.growth, validLevel(currentLevel));
+  return costForBuildingLevel(building, validLevel(currentLevel));
 }
 
 /** Cost to advance a technology from currentLevel to the next level. */
@@ -41,6 +71,36 @@ export function getShipCost(shipId, quantity = 1) {
   const count = Number(quantity);
   if (!ship || !Number.isSafeInteger(count) || count < 1) return null;
   return multipliedCost(ship.cost, count);
+}
+
+export function getBuildingDurationSeconds(planet, buildingId, currentLevel = queuedBuildingLevel(planet, buildingId)) {
+  const cost = getBuildingCost(buildingId, currentLevel);
+  if (!cost) return 0;
+  const capitolLevel = queuedBuildingLevel(planet, "capitol");
+  const foundryLevel = queuedBuildingLevel(planet, "foundry");
+  const divisor = BUILD_SPEED_RULES.buildingBaseDivisor
+    * (capitolLevel + 1)
+    * foundryMultiplier(foundryLevel);
+  return buildDurationSeconds(cost, divisor);
+}
+
+export function getShipDurationSeconds(planet, shipId, quantity = 1) {
+  const cost = getShipCost(shipId, quantity);
+  if (!cost) return 0;
+  const shipyardLevel = queuedBuildingLevel(planet, "shipyard");
+  const foundryLevel = queuedBuildingLevel(planet, "foundry");
+  const divisor = BUILD_SPEED_RULES.shipBaseDivisor
+    * (shipyardLevel + 1)
+    * foundryMultiplier(foundryLevel);
+  return buildDurationSeconds(cost, divisor);
+}
+
+export function getResearchDurationSeconds(planet, technologyId, currentLevel = 0) {
+  const cost = getResearchCost(technologyId, currentLevel);
+  if (!cost) return 0;
+  const labLevel = validLevel(planet?.buildings?.researchLab);
+  const divisor = BUILD_SPEED_RULES.researchBaseDivisor * (labLevel + 1);
+  return buildDurationSeconds(cost, divisor);
 }
 
 function getPlanet(state, planetId) {
@@ -67,13 +127,6 @@ function pay(planet, cost) {
 
 function queueTail(queue) {
   return queue.reduce((latest, item) => Math.max(latest, Number(item.completesAt) || 0), 0);
-}
-
-function queuedBuildingLevel(planet, buildingId) {
-  const queued = (planet.constructionQueue ?? []).filter(
-    (item) => item.type === "building" && item.target === buildingId
-  ).length;
-  return validLevel(planet.buildings?.[buildingId]) + queued;
 }
 
 function hasBuilding(planet, buildingId, requiredLevel) {
@@ -128,8 +181,7 @@ export function queueBuilding(state, planetId, buildingId) {
   const cost = getBuildingCost(buildingId, currentLevel);
   if (!canAfford(planet, cost)) return fail("Not enough resources.");
 
-  const duration = Math.max(1, Number(building.baseSeconds) || 1)
-    * Math.pow(Math.max(1, Number(building.growth) || 1), currentLevel);
+  const duration = getBuildingDurationSeconds(planet, buildingId, currentLevel);
   const startedAt = nextStartAt(planet.constructionQueue, state.now);
   pay(planet, cost);
   planet.constructionQueue.push({
@@ -163,7 +215,7 @@ export function queueShips(state, planetId, shipId, quantity) {
   if (!canAfford(planet, cost)) return fail("Not enough resources.");
 
   const startedAt = nextStartAt(planet.constructionQueue, state.now);
-  const duration = Math.max(1, Number(ship.baseSeconds) || 1) * count;
+  const duration = getShipDurationSeconds(planet, shipId, count);
   pay(planet, cost);
   planet.constructionQueue.push({
     id: makeId(state, "ships"),
@@ -202,8 +254,7 @@ export function startResearch(state, technologyId, planetId) {
   const cost = getResearchCost(technologyId, currentLevel);
   if (!canAfford(planet, cost)) return fail("Not enough resources.");
 
-  const duration = Math.max(1, Number(technology.baseSeconds) || 1)
-    * Math.pow(Math.max(1, Number(technology.growth) || 1), currentLevel);
+  const duration = getResearchDurationSeconds(planet, technologyId, currentLevel);
   const startedAt = Number(state.now) || Date.now();
   pay(planet, cost);
   planet.researchQueue.push({
@@ -232,6 +283,16 @@ export function completeDueQueues(state) {
     for (const item of planet.constructionQueue) {
       if ((Number(item.completesAt) || 0) > now) {
         pendingConstruction.push(item);
+        continue;
+      }
+      if (item.type === "building" && item.migrateSharedStorage) {
+        for (const buildingId of ["oreWarehouse", "crystalWarehouse", "hydrogenStorage"]) {
+          planet.buildings[buildingId] = validLevel(planet.buildings[buildingId]) + 1;
+        }
+        const level = planet.buildings.oreWarehouse;
+        const name = "Resource Storage Facilities";
+        report(state, "building", `${name} complete`, `${name} have reached level ${level} on ${planet.name}.`);
+        completed.push({ type: "building", planetId: planet.id, target: "storageFacilities", level });
         continue;
       }
       if (item.type === "building" && BUILDINGS[item.target]) {

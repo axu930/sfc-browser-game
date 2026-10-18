@@ -449,7 +449,8 @@ function resolveColonization(state, fleet, target) {
     resources: { ore: 500, crystal: 500, hydrogen: 250 },
     buildings: {
       capitol: 1, oreMine: 1, crystalMine: 1, hydrogenSynthesizer: 0, solarPlant: 1,
-      storageDepot: 0, roboticsFactory: 0, researchLab: 0, shipyard: 0, foundry: 0
+      oreWarehouse: 0, crystalWarehouse: 0, hydrogenStorage: 0,
+      roboticsFactory: 0, researchLab: 0, shipyard: 0, foundry: 0
     },
     ships: { ...fleet.ships, colonyShip: colonyShip - 1 },
     constructionQueue: [],

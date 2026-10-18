@@ -8,7 +8,7 @@ import { dispatchMission } from "../src/game/fleets.js";
 test("offline simulation completes due work and continues resource production", () => {
   const state = createInitialState(1_000);
   const home = state.planets[0];
-  home.resources = { ore: 500, crystal: 100, hydrogen: 100 };
+  home.resources = { ore: 5000, crystal: 1000, hydrogen: 100 };
   assert.equal(queueBuilding(state, home.id, "oreMine").ok, true);
   const oreAfterPayment = home.resources.ore;
   const targetTime = home.constructionQueue[0].completesAt + 60 * 60 * 1000;

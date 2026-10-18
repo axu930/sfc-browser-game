@@ -1,6 +1,6 @@
 import { BUILDINGS, MISSIONS, RESEARCH, RESOURCE_KEYS, SHIPS } from "./game/catalog.js";
-import { getPlanetProduction } from "./game/economy.js";
-import { getBuildingCost, getResearchCost, getShipCost, queueBuilding, queueShips, startResearch } from "./game/progression.js";
+import { getMineLevelMultiplier, getPlanetProduction } from "./game/economy.js";
+import { getBuildingCost, getBuildingDurationSeconds, getResearchCost, getResearchDurationSeconds, getShipCost, getShipDurationSeconds, queueBuilding, queueShips, startResearch } from "./game/progression.js";
 import { dispatchMission } from "./game/fleets.js";
 import { advanceGame } from "./game/simulation.js";
 import { loadState, resetState, saveState } from "./game/state.js";
@@ -96,7 +96,7 @@ function renderSidebar() {
   $("#production-summary").innerHTML = `
     ${RESOURCE_KEYS.map(key => `<div class="status-line"><span>${key[0].toUpperCase() + key.slice(1)} / hr</span><strong>${number(rates.productionPerHour[key])}</strong></div>`).join("")}
     <div class="status-line"><span>Energy</span><strong>${number(rates.energy.production)} / ${number(rates.energy.consumption)}</strong></div>
-    <div class="status-line"><span>Storage</span><strong>${number(rates.storageCapacity)}</strong></div>`;
+    ${RESOURCE_KEYS.map(key => `<div class="status-line"><span>${key[0].toUpperCase() + key.slice(1)} capacity</span><strong>${number(rates.storageCapacity[key])}</strong></div>`).join("")}`;
   const ships = Object.entries(activePlanet.ships || {}).filter(([, count]) => count > 0);
   const traveling = state.fleets.reduce((total, fleet) => total + Object.values(fleet.ships || {}).reduce((sum, count) => sum + count, 0), 0);
   $("#fleet-summary").innerHTML = `${ships.length ? ships.map(([id, count]) => `<div class="status-line"><span>${escapeHtml(SHIPS[id]?.name || id)}</span><strong>${number(count)}</strong></div>`).join("") : `<div class="status-line"><span>No ships stationed</span><strong>—</strong></div>`}<div class="status-line"><span>In flight</span><strong>${number(traveling)}</strong></div>`;
@@ -134,7 +134,7 @@ function renderOverview() {
 function renderColonyOverview(world) {
   const rates = getPlanetProduction(world);
   const rows = Object.entries(world.buildings).filter(([, level]) => level > 0).map(([id, level]) => `<tr><td><strong>${escapeHtml(BUILDINGS[id]?.name || id)}</strong></td><td><span class="level-badge">${number(level)}</span></td></tr>`).join("");
-  const resourceMeters = RESOURCE_KEYS.map(key => `<div class="overview-resource ${key}"><div class="overview-resource-head"><span>${key}</span><strong>+${number(rates.productionPerHour[key])}<small>/hr</small></strong></div><div class="overview-resource-stock">${number(world.resources[key])}<span> in storage</span></div></div>`).join("");
+  const resourceMeters = RESOURCE_KEYS.map(key => `<div class="overview-resource ${key}"><div class="overview-resource-head"><span>${key}</span><strong>+${number(rates.productionPerHour[key])}<small>/hr</small></strong></div><div class="overview-resource-stock">${number(world.resources[key])}<span> / ${number(rates.storageCapacity[key])} capacity</span></div></div>`).join("");
   return `<div class="overview-layout">
       <div class="overview-primary">
         <section class="overview-block">
@@ -167,12 +167,18 @@ function renderShipTable(world) {
 }
 
 function renderBuildings(world) {
+  const rates = getPlanetProduction(world);
   const rows = Object.values(BUILDINGS).map(building => {
     const level = world.buildings[building.id] || 0;
     const cost = getBuildingCost(building.id, level);
     const requirement = meetsBuilding(world, building.prerequisite);
-    const label = building.production ? `Produces ${Object.entries(building.production).map(([key, amount]) => `${number(amount * level)} ${key}/hr`).join(", ")} · ${number((building.energyUse || 0) * level)} energy` : building.energyProduction ? `Generates ${number(building.energyProduction * level)} energy` : building.storage ? `Adds ${number(building.storage * level)} storage` : building.description;
-    return `<tr><td><strong>${escapeHtml(building.name)}</strong><span class="subtext">${escapeHtml(label)}</span></td><td><span class="level-badge">${level}</span></td><td class="cost-line">${costText(cost)}</td><td class="mono">${formatDuration(building.baseSeconds * Math.pow(building.growth, level))}</td><td>${requirement ? `<button class="button" data-build="${escapeHtml(building.id)}">Upgrade</button>` : `<span class="tag">Prerequisite missing</span>`}</td></tr>`;
+    const mineMultiplier = building.mineGrowth ? getMineLevelMultiplier(level, building.mineGrowth) : level;
+    const label = building.production
+      ? `Produces ${Object.entries(building.production).map(([key, amount]) => `${number(amount * mineMultiplier)} ${key}/hr`).join(", ")} · ${number((building.energyUse || 0) * mineMultiplier)} energy`
+      : building.energyProduction ? `Generates ${number(building.energyProduction * level)} energy`
+        : building.storageResource ? `${number(rates.storageCapacity[building.storageResource])} ${building.storageResource} capacity`
+          : building.description;
+    return `<tr><td><strong>${escapeHtml(building.name)}</strong><span class="subtext">${escapeHtml(label)}</span></td><td><span class="level-badge">${level}</span></td><td class="cost-line">${costText(cost)}</td><td class="mono">${formatDuration(getBuildingDurationSeconds(world, building.id, level))}</td><td>${requirement ? `<button class="button" data-build="${escapeHtml(building.id)}">Upgrade</button>` : `<span class="tag">Prerequisite missing</span>`}</td></tr>`;
   }).join("");
   return `${card("Construction Queue", renderQueue(world), "Building and ship projects currently underway")}${card("Buildings", `<div class="table-wrap"><table><thead><tr><th>Facility</th><th>Level</th><th>Next cost</th><th>Time</th><th>Order</th></tr></thead><tbody>${rows}</tbody></table></div>`, "Spend planetary resources to expand infrastructure")}`;
 }
@@ -182,7 +188,7 @@ function renderResearch(world) {
     const level = state.research[tech.id] || 0;
     const cost = getResearchCost(tech.id, level);
     const unlocked = meetsBuilding(world, tech.requirements) && meetsResearch(tech.research || {});
-    return `<tr><td><strong>${escapeHtml(tech.name)}</strong><span class="subtext">${escapeHtml(tech.description)}</span></td><td><span class="level-badge research-level-badge">${level}</span></td><td class="cost-line">${costText(cost)}</td><td class="mono">${formatDuration(tech.baseSeconds * Math.pow(tech.growth, level))}</td><td>${unlocked ? `<button class="button" data-research="${escapeHtml(tech.id)}">Research</button>` : `<span class="tag">Locked</span>`}</td></tr>`;
+    return `<tr><td><strong>${escapeHtml(tech.name)}</strong><span class="subtext">${escapeHtml(tech.description)}</span></td><td><span class="level-badge research-level-badge">${level}</span></td><td class="cost-line">${costText(cost)}</td><td class="mono">${formatDuration(getResearchDurationSeconds(world, tech.id, level))}</td><td>${unlocked ? `<button class="button" data-research="${escapeHtml(tech.id)}">Research</button>` : `<span class="tag">Locked</span>`}</td></tr>`;
   }).join("");
   return `${card("Research Queue", renderQueue(world))}${card("Technology Database", `<div class="table-wrap"><table><thead><tr><th>Technology</th><th>Level</th><th>Next cost</th><th>Time</th><th>Order</th></tr></thead><tbody>${rows}</tbody></table></div>`, "Technology unlocks ships and improves fleet capabilities")}`;
 }
@@ -192,7 +198,7 @@ function renderShipyard(world) {
     const cost = getShipCost(ship.id, 1);
     const unlocked = meetsBuilding(world, ship.requirements) && meetsResearch(ship.research || {});
     const damage = [ship.ore ? `${number(ship.ore)} O` : "", ""].filter(Boolean).join(" ");
-    return `<tr><td><strong>${escapeHtml(ship.name)}</strong><span class="subtext">${escapeHtml(ship.role)} · Cargo ${number(ship.cargo)} · ${escapeHtml(ship.description)}</span></td><td class="cost-line">${costText(cost)}</td><td class="mono">${formatDuration(ship.baseSeconds)}</td><td>${unlocked ? `<form class="inline-ship-form" data-ship-form="${escapeHtml(ship.id)}"><label class="visually-hidden" for="qty-${escapeHtml(ship.id)}">Quantity</label><input id="qty-${escapeHtml(ship.id)}" name="quantity" type="number" min="1" max="100" value="1"><button class="button" type="submit">Build</button></form>` : `<span class="tag">Locked</span>`}</td><td class="mono">${number(world.ships[ship.id] || 0)}</td></tr>`;
+    return `<tr><td><strong>${escapeHtml(ship.name)}</strong><span class="subtext">${escapeHtml(ship.role)} · Cargo ${number(ship.cargo)} · ${escapeHtml(ship.description)}</span></td><td class="cost-line">${costText(cost)}</td><td class="mono">${formatDuration(getShipDurationSeconds(world, ship.id, 1))}</td><td>${unlocked ? `<form class="inline-ship-form" data-ship-form="${escapeHtml(ship.id)}"><label class="visually-hidden" for="qty-${escapeHtml(ship.id)}">Quantity</label><input id="qty-${escapeHtml(ship.id)}" name="quantity" type="number" min="1" max="100" value="1"><button class="button" type="submit">Build</button></form>` : `<span class="tag">Locked</span>`}</td><td class="mono">${number(world.ships[ship.id] || 0)}</td></tr>`;
   }).join("");
   return `${card("Ship Construction Queue", renderQueue(world))}${card("Shipyard", `<div class="table-wrap"><table><thead><tr><th>Ship / role</th><th>Unit cost</th><th>Time</th><th>Order</th><th>Owned</th></tr></thead><tbody>${rows}</tbody></table></div>`, "Ship availability follows facility and technology requirements")}`;
 }
