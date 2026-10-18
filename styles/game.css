@@ -861,3 +861,106 @@ footer { border-color: var(--line); color: #929da1; }
   .resource-label { display: none; }
   .resource-value { font-size: 10px; }
 }
+
+.planet-nav-overview { border-left: 0; }
+.layout.empire-overview { grid-template-columns: minmax(0, 1fr); }
+.layout.empire-overview > .sidebar { display: none; }
+.empire-table td { vertical-align: middle; }
+.empire-table .colony-open-link {
+  display: block;
+  margin: 0;
+  padding: 0;
+  color: #e0e5e6;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+.empire-table .colony-open-link:hover { color: #fff; }
+.empire-table td:nth-child(n + 2):nth-child(-n + 4) { white-space: nowrap; }
+
+.universe-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(270px, 330px);
+  align-items: start;
+  gap: 14px;
+}
+.universe-main, .universe-sidebar { min-width: 0; }
+.universe-sidebar { display: grid; gap: 12px; align-content: start; }
+.universe-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin: 0 0 13px;
+  padding: 8px;
+  border: 1px solid #252e32;
+  background: #050809;
+}
+.universe-control-group { display: flex; align-items: center; gap: 9px; color: #bfc8ca; font-size: 11px; }
+.universe-control-group strong { color: #e0e5e6; font: 700 12px 'IBM Plex Mono', monospace; }
+.universe-control-group .button { min-width: 29px; padding: 4px 8px; font-size: 16px; line-height: 1; }
+.system-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.system-slot {
+  min-width: 0;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 7px;
+  padding: 8px 9px;
+  border: 1px solid #2c363a;
+  background: linear-gradient(145deg, #111719, #080c0e);
+  color: #d8dddf;
+  text-align: left;
+}
+button.system-slot { cursor: pointer; }
+button.system-slot:hover, button.system-slot.selected { border-color: #b7c1c4; background: #171e21; }
+.system-slot-empty { border-style: dashed; background: #070a0b; color: #869296; }
+.system-slot-number { color: #9ca8ab; font: 10px 'IBM Plex Mono', monospace; }
+.system-slot-copy { display: grid; gap: 3px; min-width: 0; }
+.system-slot-copy strong { overflow-wrap: anywhere; color: #d8dddf; font-size: 11px; }
+.system-slot-copy small { color: #929da1; font-size: 9px; }
+.system-slot-colony { border-left: 3px solid #bac5c8; }
+.system-slot-npc { border-left: 3px solid #9e888b; }
+.system-slot-unclaimed { border-left: 3px solid #7e8c90; }
+.system-slot-debris { border-left: 3px solid #a59f8c; }
+.system-slot-fleet { border-left: 3px solid #8c9ba0; }
+.system-legend { display: flex; flex-wrap: wrap; gap: 7px 15px; margin-top: 11px; color: #9ca7aa; font-size: 9px; }
+.system-legend span::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 5px; background: #bac5c8; }
+.system-legend-npc::before { background: #9e888b !important; }
+.system-legend-empty::before { background: #7e8c90 !important; }
+.system-legend-debris::before { background: #a59f8c !important; }
+.poi-list { display: grid; gap: 6px; }
+.poi-item {
+  width: 100%;
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px solid #252e32;
+  background: #080c0e;
+  color: #d8dddf;
+  text-align: left;
+  cursor: pointer;
+}
+.poi-item:hover, .poi-item.selected { border-color: #aab5b8; background: #141a1c; }
+.poi-item-type { color: #a1adb0; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+.poi-item strong { color: #e1e5e6; font-size: 12px; }
+.poi-item-meta { color: #9ba6a9; font-size: 10px; line-height: 1.4; }
+.poi-detail-coordinate { color: #a8b3b6; font: 10px 'IBM Plex Mono', monospace; }
+.poi-detail h3 { margin-top: 7px; color: #e0e5e6; font-size: 14px; }
+.poi-detail p { margin: 6px 0 12px; color: #b4bec1; font-size: 11px; line-height: 1.5; }
+
+@media (max-width: 900px) {
+  .universe-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .universe-controls { align-items: flex-start; flex-direction: column; }
+  .system-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .system-slot { min-height: 68px; padding: 7px; }
+  .empire-table { min-width: 580px; }
+}

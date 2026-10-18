@@ -6,13 +6,16 @@ import { advanceGame } from "./game/simulation.js";
 import { loadState, resetState, saveState } from "./game/state.js";
 
 const pageTitles = {
-  overview: "Planet Overview", buildings: "Planetary Buildings", research: "Research Projects",
+  overview: "All Planets", colonyOverview: "Colony Overview", buildings: "Planetary Buildings", research: "Research Projects",
   shipyard: "Shipyard", fleets: "Fleet Command", universe: "Universe",
   reports: "Commander Reports"
 };
 let state = loadState();
 let currentPage = "overview";
 let selectedPlanetId = state.planets[0]?.id;
+let selectedUniverseGalaxy = Number(state.planets[0]?.coordinates?.galaxy) || 1;
+let selectedUniverseSystem = Number(state.planets[0]?.coordinates?.system) || 1;
+let selectedPoiId = "";
 let toastTimer;
 let lastSavedAt = 0;
 
@@ -59,7 +62,10 @@ function advanceSimulation() {
 
 function renderHeader() {
   const activePlanet = planet();
-  const rates = getPlanetProduction(activePlanet);
+  const isEmpireOverview = currentPage === "overview";
+  const empireResources = Object.fromEntries(RESOURCE_KEYS.map(key => [key, state.planets.reduce((sum, item) => sum + (Number(item.resources?.[key]) || 0), 0)]));
+  const empireProduction = Object.fromEntries(RESOURCE_KEYS.map(key => [key, state.planets.reduce((sum, item) => sum + getPlanetProduction(item).productionPerHour[key], 0)]));
+  const activeRates = activePlanet ? getPlanetProduction(activePlanet) : null;
   $("#planet-strip-inner").innerHTML = state.planets.map(item => `
     <button class="colony-chip${item.id === activePlanet.id ? " selected" : ""}" data-planet="${escapeHtml(item.id)}" aria-pressed="${item.id === activePlanet.id}">
       <span class="colony-orb" aria-hidden="true"></span>
@@ -67,7 +73,7 @@ function renderHeader() {
     </button>
   `).join("");
   $("#resource-bar").innerHTML = RESOURCE_KEYS.map(key => `
-    <div class="resource-chip ${key}"><span class="resource-symbol" aria-hidden="true">${key === "ore" ? "O" : key === "crystal" ? "C" : "H"}</span><span class="resource-label">${key}</span><span class="resource-value">${number(activePlanet?.resources[key])}</span><span class="resource-rate">+${number(rates.productionPerHour[key])}/h</span></div>
+    <div class="resource-chip ${key}"><span class="resource-symbol" aria-hidden="true">${key === "ore" ? "O" : key === "crystal" ? "C" : "H"}</span><span class="resource-label">${key}</span><span class="resource-value">${number(isEmpireOverview ? empireResources[key] : activePlanet?.resources[key])}</span><span class="resource-rate">+${number(isEmpireOverview ? empireProduction[key] : activeRates.productionPerHour[key])}/h</span></div>
   `).join("");
   $("#planet-select").innerHTML = `<div class="planet-name">${escapeHtml(activePlanet?.name || "Unknown Colony")}</div><div class="planet-coordinates">${coordinates(activePlanet?.coordinates)}</div>`;
   const structures = Object.values(activePlanet?.buildings || {}).filter(level => level > 0).length;
@@ -76,7 +82,9 @@ function renderHeader() {
   $("#report-count").textContent = state.reports.length ? `(${Math.min(state.reports.length, 99)})` : "";
   $("#clock-time").textContent = new Date(state.now).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const point = activePlanet?.coordinates;
-  $("#page-context").textContent = point ? `GALAXY ${point.galaxy} · SYSTEM ${point.system}` : "COLONY COMMAND";
+  $("#page-context").textContent = isEmpireOverview
+    ? `COMMAND NETWORK · ${state.planets.length} ${state.planets.length === 1 ? "COLONY" : "COLONIES"}`
+    : point ? `GALAXY ${point.galaxy} · SYSTEM ${point.system}` : "COLONY COMMAND";
   renderSidebar();
 }
 
@@ -110,7 +118,19 @@ function renderQueue(world) {
   }).join("")}</tbody></table></div>`;
 }
 
-function renderOverview(world) {
+function renderOverview() {
+  const rows = state.planets.map(world => {
+    const shipCount = Object.values(world.ships || {}).reduce((sum, count) => sum + (Number(count) || 0), 0);
+    const shipManifest = Object.entries(world.ships || {})
+      .filter(([, count]) => Number(count) > 0)
+      .map(([id, count]) => `${number(count)} ${SHIPS[id]?.name || id}`)
+      .join(" · ");
+    return `<tr><td><button class="text-action colony-open-link" data-open-colony="${escapeHtml(world.id)}">${escapeHtml(world.name)}</button><span class="subtext">${coordinates(world.coordinates)}</span></td><td class="mono">${number(world.resources?.ore)}</td><td class="mono">${number(world.resources?.crystal)}</td><td class="mono">${number(world.resources?.hydrogen)}</td><td><strong>${number(shipCount)} ships</strong><span class="subtext">${escapeHtml(shipManifest || "No ships stationed")}</span></td></tr>`;
+  }).join("");
+  return card("Colonies", `<div class="table-wrap"><table class="empire-table"><thead><tr><th>Colony</th><th>Ore</th><th>Crystal</th><th>Hydrogen</th><th>Ships</th></tr></thead><tbody>${rows || `<tr><td colspan="5">No colonies established.</td></tr>`}</tbody></table></div>`, "Resource stocks and stationed fleets across your colonies");
+}
+
+function renderColonyOverview(world) {
   const rates = getPlanetProduction(world);
   const rows = Object.entries(world.buildings).filter(([, level]) => level > 0).map(([id, level]) => `<tr><td><strong>${escapeHtml(BUILDINGS[id]?.name || id)}</strong></td><td><span class="level-badge">${number(level)}</span></td></tr>`).join("");
   const resourceMeters = RESOURCE_KEYS.map(key => `<div class="overview-resource ${key}"><div class="overview-resource-head"><span>${key}</span><strong>+${number(rates.productionPerHour[key])}<small>/hr</small></strong></div><div class="overview-resource-stock">${number(world.resources[key])}<span> in storage</span></div></div>`).join("");
@@ -204,20 +224,79 @@ function renderFleets(world) {
   return `${card("Dispatch Orders", form, "Select a mission, target, and ships stationed at this planet")}${card("Fleets in Flight", fleetRows ? `<div class="table-wrap"><table><thead><tr><th>Order</th><th>Phase</th><th>ETA</th></tr></thead><tbody>${fleetRows}</tbody></table></div>` : `<div class="empty-state">All ships are currently stationed at a planet.</div>`)}`;
 }
 
+function systemPointsOfInterest() {
+  const inSystem = point => Number(point?.galaxy) === selectedUniverseGalaxy && Number(point?.system) === selectedUniverseSystem;
+  const colonies = state.planets.filter(item => inSystem(item.coordinates)).map(item => ({
+    poiId: `colony:${item.id}`, sourceId: item.id, kind: "colony", name: item.name,
+    coordinates: item.coordinates, ships: item.ships, resources: item.resources
+  }));
+  const targets = (state.universe.targets || []).filter(item => inSystem(item.coordinates)).map(item => ({
+    poiId: `target:${item.id}`, sourceId: item.id, kind: item.npcType === "empty" ? "empty" : "npc",
+    name: item.name, coordinates: item.coordinates, ships: item.ships, resources: item.resources
+  }));
+  const debris = (state.universe.debris || []).filter(item => inSystem(item.coordinates)).map(item => ({
+    poiId: `debris:${item.id}`, sourceId: item.id, kind: "debris", name: "Debris Field",
+    coordinates: item.coordinates, resources: { ore: item.ore, crystal: item.crystal, hydrogen: 0 }
+  }));
+  const fleets = (state.fleets || []).filter(item => inSystem(item.targetCoordinates)).map(item => ({
+    poiId: `fleet:${item.id}`, sourceId: item.id, kind: "fleet", name: `${MISSIONS[item.mission]?.name || "Fleet"} Fleet`,
+    coordinates: item.targetCoordinates, ships: item.ships, status: item.status
+  }));
+  return [...colonies, ...targets, ...debris, ...fleets].sort((a, b) => Number(a.coordinates.slot) - Number(b.coordinates.slot));
+}
+
+function poiKindLabel(point) {
+  return ({ colony: "Colony", npc: "Hostile Contact", empty: "Unclaimed World", debris: "Debris Field", fleet: "Fleet" })[point.kind] || "Point of Interest";
+}
+
+function poiSummary(point) {
+  if (point.kind === "colony") {
+    const ships = Object.values(point.ships || {}).reduce((sum, count) => sum + Number(count || 0), 0);
+    return `${number(ships)} stationed ships · ${number(point.resources?.ore)} Ore`;
+  }
+  if (point.kind === "npc") {
+    const ships = Object.values(point.ships || {}).reduce((sum, count) => sum + Number(count || 0), 0);
+    return `${number(ships)} defenders · ${number(point.resources?.ore)} Ore, ${number(point.resources?.crystal)} Crystal`;
+  }
+  if (point.kind === "empty") return "Available for colonization";
+  if (point.kind === "debris") return `${number(point.resources?.ore)} Ore · ${number(point.resources?.crystal)} Crystal`;
+  return `${point.status || "In transit"} · ${Object.values(point.ships || {}).reduce((sum, count) => sum + Number(count || 0), 0)} ships`;
+}
+
+function poiAction(point) {
+  if (point.kind === "colony") return `<button class="button" data-open-colony="${escapeHtml(point.sourceId)}">Open Colony</button>`;
+  if (point.kind === "npc") return `<button class="button" data-navigate="fleets" data-target="${escapeHtml(point.sourceId)}">Plan Attack</button>`;
+  if (point.kind === "empty") return `<button class="button" data-navigate="fleets" data-target="${escapeHtml(point.sourceId)}" data-mission="colonize">Plan Colonization</button>`;
+  if (point.kind === "debris") return `<button class="button" data-navigate="fleets" data-target="${escapeHtml(point.sourceId)}" data-mission="harvest">Harvest Debris</button>`;
+  return `<button class="button" data-navigate="fleets">Fleet Command</button>`;
+}
+
 function renderUniverse() {
-  const targets = state.universe.targets || [];
-  const debris = state.universe.debris || [];
-  const targetRows = targets.map(target => {
-    const isEmpty = target.npcType === "empty";
-    const isColony = state.planets.some(item => item.id === target.id);
-    const action = isEmpty
-      ? `<button class="button" data-navigate="fleets" data-target="${escapeHtml(target.id)}" data-mission="colonize">Colonize</button>`
-      : `<button class="button" data-navigate="fleets" data-target="${escapeHtml(target.id)}">Plan mission</button>`;
-    return `<tr><td><strong>${escapeHtml(target.name)}</strong><span class="subtext">${escapeHtml(target.npcType || (isColony ? "Colony" : "Unknown contact"))}</span></td><td class="mono">${coordinates(target.coordinates)}</td><td class="mono">${Object.entries(target.ships || {}).map(([id, count]) => `${number(count)} ${SHIPS[id]?.name || id}`).join(", ") || "None"}</td><td class="cost-line">${costText(target.resources)}</td><td>${action}</td></tr>`;
+  const points = systemPointsOfInterest();
+  if (!points.some(point => point.poiId === selectedPoiId)) selectedPoiId = points[0]?.poiId || "";
+  const selectedPoint = points.find(point => point.poiId === selectedPoiId);
+  const slots = Array.from({ length: 15 }, (_, index) => {
+    const slot = index + 1;
+    const occupants = points.filter(point => Number(point.coordinates.slot) === slot);
+    const primary = occupants[0];
+    if (!primary) return `<div class="system-slot system-slot-empty"><span class="system-slot-number">${slot}</span><span class="system-slot-copy"><strong>Open Slot</strong><small>Unoccupied</small></span></div>`;
+    const isSelected = occupants.some(point => point.poiId === selectedPoiId);
+    const slotType = primary.kind === "empty" ? "unclaimed" : primary.kind;
+    return `<button class="system-slot system-slot-${slotType}${isSelected ? " selected" : ""}" data-poi-id="${escapeHtml(primary.poiId)}" aria-pressed="${isSelected}"><span class="system-slot-number">${slot}</span><span class="system-slot-copy"><strong>${escapeHtml(primary.name)}</strong><small>${poiKindLabel(primary)}${occupants.length > 1 ? ` · +${occupants.length - 1} more` : ""}</small></span></button>`;
   }).join("");
-  const debrisRows = debris.map(field => `<tr><td><strong>Debris field</strong></td><td class="mono">${coordinates(field.coordinates)}</td><td colspan="2" class="cost-line">${number(field.ore)} Ore · ${number(field.crystal)} Crystal</td><td><button class="button" data-navigate="fleets" data-target="${escapeHtml(field.id)}" data-mission="harvest">Harvest</button></td></tr>`).join("");
-  const targetCard = card("Known Signals", targetRows || debrisRows ? `<div class="table-wrap"><table><thead><tr><th>Signal</th><th>Coordinates</th><th>Defense / Resources</th><th>Plunder</th><th>Orders</th></tr></thead><tbody>${targetRows}${debrisRows}</tbody></table></div>` : `<div class="empty-state">No known contacts or debris fields.</div>`, "Targets can be scouted before committing an attack fleet");
-  return `${targetCard}${card("Colonies", `<div class="table-wrap"><table><thead><tr><th>Planet</th><th>Coordinates</th><th>Fleet</th><th>Resources</th></tr></thead><tbody>${state.planets.map(item => `<tr><td><strong>${escapeHtml(item.name)}</strong></td><td class="mono">${coordinates(item.coordinates)}</td><td class="mono">${Object.values(item.ships || {}).reduce((sum, count) => sum + count, 0)} ships</td><td class="cost-line">${costText(item.resources)}</td></tr>`).join("")}</tbody></table></div>`)}`;
+  const poiRows = points.map(point => `<button class="poi-item${point.poiId === selectedPoiId ? " selected" : ""}" data-poi-id="${escapeHtml(point.poiId)}" aria-pressed="${point.poiId === selectedPoiId}"><span class="poi-item-type">${poiKindLabel(point)}</span><strong>${escapeHtml(point.name)}</strong><span class="poi-item-meta">Slot ${number(point.coordinates.slot)} · ${escapeHtml(poiSummary(point))}</span></button>`).join("");
+  const selectedCard = selectedPoint
+    ? card("Selected Point", `<div class="poi-detail"><div class="poi-detail-coordinate">${coordinates(selectedPoint.coordinates)}</div><h3>${escapeHtml(selectedPoint.name)}</h3><p>${escapeHtml(poiSummary(selectedPoint))}</p>${poiAction(selectedPoint)}</div>`)
+    : card("Selected Point", `<div class="empty-state">Select a point in the system to inspect it.</div>`);
+  return `<div class="universe-layout">
+    <div class="universe-main">
+      ${card("System View", `<div class="universe-controls">
+        <div class="universe-control-group"><button class="button" data-universe-step="galaxy" data-delta="-1" aria-label="Previous galaxy" ${selectedUniverseGalaxy <= 1 ? "disabled" : ""}>‹</button><span>Galaxy ${selectedUniverseGalaxy}</span><button class="button" data-universe-step="galaxy" data-delta="1" aria-label="Next galaxy">›</button></div>
+        <div class="universe-control-group"><button class="button" data-universe-step="system" data-delta="-1" aria-label="Previous system" ${selectedUniverseSystem <= 1 ? "disabled" : ""}>‹</button><strong>System ${selectedUniverseSystem}</strong><button class="button" data-universe-step="system" data-delta="1" aria-label="Next system">›</button></div>
+      </div><div class="system-grid" aria-label="Galaxy ${selectedUniverseGalaxy}, system ${selectedUniverseSystem}">${slots}</div><div class="system-legend"><span class="system-legend-colony">Colony</span><span class="system-legend-npc">Hostile contact</span><span class="system-legend-empty">Unclaimed world</span><span class="system-legend-debris">Debris</span></div>`, "Navigate neighboring systems and select a slot to inspect known locations")}
+    </div>
+    <aside class="universe-sidebar">${card("Points of Interest", poiRows || `<div class="empty-state">No known points of interest in this system.</div>`, `${points.length} known location${points.length === 1 ? "" : "s"}`)}${selectedCard}</aside>
+  </div>`;
 }
 
 function renderReports() {
@@ -228,10 +307,11 @@ function renderReports() {
 function render() {
   if (!planet()) return;
   renderHeader();
+  $(".layout").classList.toggle("empire-overview", currentPage === "overview");
   $("#page-title").textContent = pageTitles[currentPage] || pageTitles.overview;
   $$(".nav-item, .planet-nav-item").forEach(button => button.classList.toggle("active", button.dataset.page === currentPage));
   const activePlanet = planet();
-  const renderers = { overview: renderOverview, buildings: renderBuildings, research: renderResearch, shipyard: renderShipyard, fleets: renderFleets, universe: renderUniverse, reports: renderReports };
+  const renderers = { overview: renderOverview, colonyOverview: renderColonyOverview, buildings: renderBuildings, research: renderResearch, shipyard: renderShipyard, fleets: renderFleets, universe: renderUniverse, reports: renderReports };
   $("#game-content").innerHTML = renderers[currentPage](activePlanet);
 }
 
@@ -259,6 +339,28 @@ function act(result) {
 }
 
 document.addEventListener("click", event => {
+  const systemStep = event.target.closest("[data-universe-step]");
+  if (systemStep) {
+    const delta = Number(systemStep.dataset.delta) || 0;
+    if (systemStep.dataset.universeStep === "galaxy") selectedUniverseGalaxy = Math.max(1, selectedUniverseGalaxy + delta);
+    else selectedUniverseSystem = Math.max(1, selectedUniverseSystem + delta);
+    selectedPoiId = "";
+    render();
+    return;
+  }
+  const pointOfInterest = event.target.closest("[data-poi-id]");
+  if (pointOfInterest) {
+    selectedPoiId = pointOfInterest.dataset.poiId;
+    render();
+    return;
+  }
+  const openColony = event.target.closest("[data-open-colony]");
+  if (openColony) {
+    selectedPlanetId = openColony.dataset.openColony;
+    currentPage = "colonyOverview";
+    render();
+    return;
+  }
   const colony = event.target.closest("[data-planet]");
   if (colony) {
     selectedPlanetId = colony.dataset.planet;
@@ -267,6 +369,11 @@ document.addEventListener("click", event => {
   }
   const nav = event.target.closest("[data-page]");
   if (nav) {
+    if (nav.dataset.page === "universe" && currentPage !== "universe") {
+      selectedUniverseGalaxy = Number(planet()?.coordinates?.galaxy) || selectedUniverseGalaxy;
+      selectedUniverseSystem = Number(planet()?.coordinates?.system) || selectedUniverseSystem;
+      selectedPoiId = "";
+    }
     currentPage = nav.dataset.page;
     render();
     return;
@@ -312,6 +419,9 @@ $("#reset-save").addEventListener("click", () => {
   if (!confirm("Erase this commander save and start a new game?")) return;
   state = resetState();
   selectedPlanetId = state.planets[0].id;
+  selectedUniverseGalaxy = Number(state.planets[0]?.coordinates?.galaxy) || 1;
+  selectedUniverseSystem = Number(state.planets[0]?.coordinates?.system) || 1;
+  selectedPoiId = "";
   currentPage = "overview";
   showToast("New commander save created.");
   render();

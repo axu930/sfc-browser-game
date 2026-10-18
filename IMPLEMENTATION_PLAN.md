@@ -11,14 +11,14 @@ This plan turns [the gameplay overview](GAMEPLAY_OVERVIEW.md) into a small, play
 - The game supports building/research/ship queues; attack, espionage, transport, harvest, and colonization missions; NPC respawns; battle reports; plunder; debris; and offline catch-up.
 - Rules and catalogs are provisional single-player values in `src/game/catalog.js`. Treat them as tuning defaults rather than confirmed original-game balance.
 - Automated verification: `npm test` currently covers 16 gameplay and persistence cases.
-- The shared shell and planet overview follow the live SFC structure and palette: stacked command bars, planet strip, resource row, grouped navigation, colony profile, dark starfield, orange headings, cyan links, and red resource totals. Other page views can be refined against their references.
+- The shared shell follows the live SFC structure with a user-refined dark gray-on-black palette. The Overview is an empire-wide colony table; Colony Overview opens the selected planet dashboard; Universe is a navigable system map with a points-of-interest sidebar.
 
 ## Decisions and constraints
 
 - **Hosting and stack:** Build a static, zero-build browser app with HTML, CSS, and JavaScript modules. Keep it deployable from the GitHub Pages repository root. Do not add a server or framework for v1.
 - **Save model:** Keep all game state in the browser with a versioned `localStorage` save. Advance production, construction, research, shipbuilding, and fleets from saved timestamps when the app opens again.
 - **Rules:** Use the gameplay overview's shared core. Put costs, rates, prerequisites, ship stats, NPC templates, and combat settings in data definitions so they can be tuned without rewriting the UI. Where the accessible SFC2 wiki supplies a specific value, treat it as a provisional default and label it accordingly.
-- **Interface:** Recreate the classic SFC browser layout and navigation rather than the optimizer's interface. Use the supplied overview HTML as a structural reference for the shared bars and colony overview. Do not copy session-specific markup or actions; use local game controls and provisional CSS artwork. Align the other pages against additional references as they are shared.
+- **Interface:** Recreate the classic SFC browser layout and navigation rather than the optimizer's interface. Use the supplied overview HTML as a structural reference for shared bars and colony views. The main Overview summarizes all colonies; Colony Overview is the selected-colony detail page. Universe navigation moves system by system and keeps points of interest in a side panel. Do not copy session-specific markup or actions; use local game controls and provisional CSS artwork.
 - **Combat source:** Build from the neighboring `axu930/sfc-fleet-optimizer` combat module at commit `12c8a86`, especially `js/sfc2-combat.js` and its unit catalog in `js/units.js`. The SFC2 module accepts attacker/defender rosters and tech, simulates up to six simultaneous-fire rounds, and reports surviving rosters and losses. It is an expected-value model that can return fractional counts, so the game adapter must convert final counts to whole ships and clearly treat v1 outcomes as deterministic estimates. Keep combat behind an adapter so a discrete random battle model can replace it later.
 - **Reuse boundaries:** Copy/adapt only the relevant battle logic and unit data; do not copy the optimizer UI or the whole sibling repository. The neighboring repository has unrelated working-tree changes, while the source combat modules are clean at the pinned commit. Both repositories use Apache License 2.0; preserve the source license and attribution and mark adapted files.
 - **Scope:** Exclude Hephaestus, moon systems, alliances, multiplayer, missiles, and late-game mechanics. Start with one homeworld, a compact universe, basic ships, and a few NPC targets.
@@ -70,14 +70,15 @@ Keep static catalogs separate from saves: buildings, technologies, ships, missio
 
 ## Acceptance checklist
 
-- [x] A new save opens on a homeworld and shows resources, production, buildings, research, and ships.
+- [x] A new save opens on an all-planets overview with per-colony resources and ship inventories; Colony Overview opens detailed planet status.
 - [x] Building upgrades and research spend configured resources, run to completion, and expose options through prerequisite checks.
 - [x] Ship production updates the home fleet; resources and energy/storage constraints are reflected in the planet view.
 - [x] The player can scout an NPC, attack it, receive a battle report, and return with eligible plunder.
 - [x] A battle creates debris from destroyed ships, and a recycler mission can harvest that debris.
 - [x] Transport moves resources between owned planets and colonization creates a new owned planet.
 - [x] Reloading preserves state; offline simulation advances production and resolves due queues and fleet events chronologically.
-- [x] Adapt the shared shell and planet overview to the live SFC structure and palette; verify desktop, tablet, and phone layouts.
+- [x] Align the shared command bars with the main content, use the dark gray-on-black palette, and dock resources beside navigation on wide screens.
+- [x] Add an all-planets resource and ship table, a selected-colony dashboard, and a system-by-system universe map with a points-of-interest sidebar.
 - [ ] Compare Buildings, Research, Shipyard, Fleet Command, Universe, and Reports against page-specific references when available.
 
 ## Reference material

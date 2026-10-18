@@ -1,6 +1,6 @@
 # Starfleet Commander UI Theme Plan
 
-**Status:** Reference captured; CSS theme pass implemented and checked at desktop, tablet, and phone widths.
+**Status:** Reference captured; current prototype direction refined to an empire overview, system map, and dark gray-on-black palette.
 
 Use the live Starfleet Commander planet overview as the visual reference for the single-player interface. The goal is to carry over its recognizable space-game layout, contrast, and color cues while keeping the local game readable, responsive, and independent of the live game's assets or account actions.
 
@@ -30,15 +30,26 @@ Use the live Starfleet Commander planet overview as the visual reference for the
 
 These values are sampled from computed styles on the live overview. Use them as a palette guide; keep sufficient contrast for the local interface and do not depend on the live site's background or chrome image URLs.
 
+## Current prototype direction
+
+The prototype keeps the live site's compact command-bar structure, while following the user's refinements to layout and contrast:
+
+- Keep the header, planet strip, menus, and page content on a shared centered width. The shared width expands on large screens so the interface does not remain narrow at fullscreen.
+- Dock Ore, Crystal, and Hydrogen as three stacked resource rows to the right of the global and colony navigation rows. On narrow screens, move the resource rows below navigation and place them side by side.
+- Use charcoal and black surfaces with light gray text for the general interface. Reserve light boxes with dark text for high-value readouts such as fleet counts and research levels.
+- Make Overview the all-planets view: one compact table with per-colony Ore, Crystal, Hydrogen, and stationed ships. Show empire-wide resource totals in the command ribbon.
+- Make Colony Overview a button in the colony navigation row. It opens the detailed dashboard for the currently selected planet.
+- Make Universe a system-by-system view with previous/next navigation, a 15-slot system map, and a points-of-interest sidebar for colonies, contacts, fleets, and debris.
+
 ## Layout and component direction
 
-1. **Command header:** Keep the game's name and single-player context in a shallow black topbar. Use a compact blue circular star mark and place simulation time and connection status on the right.
-2. **Planet strip:** Keep colonies in a horizontally scrollable row. Give each planet a small CSS-rendered globe, name, and coordinates; mark the selected colony with an orange edge.
-3. **Resource row:** Show all three balances in one narrow dark strip with their colored abbreviations, amounts, and local production rates.
-4. **Navigation:** Keep the global destinations in a dark primary bar and Buildings, Shipyard, and Research in a thinner secondary bar. Use white text and a restrained orange active marker.
-5. **Planet profile:** Use the left column for a larger globe, orange planet name, cyan coordinates, facilities and fleet facts, and compact status blocks. Preserve all current controls and factual values.
-6. **Overview and facilities:** Use a wide right column with an orange Overview heading, concise economy summary, facility and fleet tables, active projects, recent activity, and known signals. Keep table headers muted and battle outcomes green. Facility rows should use the reference's compact icon, title, details, and action rhythm as the building screen receives a deeper layout pass.
-7. **Responsive behavior:** Preserve the planet strip as a horizontal scroller. At tablet widths, stack overview sections while retaining the profile rail where space allows. On narrow phones, stack the profile and content and allow tables and navigation rows to scroll horizontally.
+1. **Command header:** Keep the game's name and single-player context in a shallow dark topbar. Place simulation time and connection status on the right.
+2. **Planet strip:** Keep colonies in a horizontally scrollable row. Give each planet a small CSS-rendered globe, name, and coordinates; mark the selected colony with a muted light-gray edge.
+3. **Resource dock:** Align the three resource readouts at the right edge of the two-row navigation stack. Show empire totals on Overview and selected-colony balances on colony pages.
+4. **Navigation:** Keep global destinations in a primary bar and Colony Overview, Buildings, Shipyard, and Research in a thinner secondary bar. Use light-gray text and a restrained silver active marker.
+5. **All-planets view:** Use a concise full-width table with each colony's coordinates, resource amounts, and ship inventory. Selecting a colony opens Colony Overview.
+6. **Colony and universe views:** Keep the detailed economy, infrastructure, queue, and activity panels on Colony Overview. The Universe view uses a 15-slot system map and a side panel for points of interest and related actions.
+7. **Responsive behavior:** Preserve the planet strip as a horizontal scroller. On narrow screens, move resources beneath navigation, stack the universe sidebar below its map, and let wide tables scroll horizontally.
 
 ## Implementation boundaries
 
@@ -49,9 +60,10 @@ These values are sampled from computed styles on the live overview. Use them as 
 
 ## Validation checklist
 
-- [x] Compare the local overview against this layout and palette at desktop, tablet, and phone widths.
-- [x] Check that resource text, section headings, links, active navigation, and positive status remain legible on the starfield.
-- [x] Confirm primary and facility navigation still work after styling changes.
+- [x] Compare the local command layout against the reference at desktop, tablet, and phone widths.
+- [x] Check that resource text, section headings, links, active navigation, and status remain legible on dark surfaces.
+- [x] Confirm primary and facility navigation work, including the separate All Planets and Colony Overview destinations.
+- [x] Add system-by-system navigation and a points-of-interest sidebar to the Universe view.
 - [ ] Refine the Buildings list into reference-inspired facility rows; compare Research, Shipyard, Fleet Command, Universe, and Reports as additional references are available.
 
 ## Reference

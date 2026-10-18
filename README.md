@@ -24,4 +24,4 @@ npm test
 - [Implementation plan and acceptance checklist](IMPLEMENTATION_PLAN.md)
 - [Original UI theme plan](UI_THEME_PLAN.md)
 
-The rules catalog is intentionally provisional. The browser shell and planet overview follow the live SFC layout and palette; see [the UI theme plan](UI_THEME_PLAN.md) for the reference details and remaining page refinements.
+The rules catalog is intentionally provisional. The shell adapts the live SFC layout into an all-planets overview, a separate colony dashboard, and a navigable system map; see [the UI theme plan](UI_THEME_PLAN.md) for reference notes and the current visual direction.
