@@ -11,7 +11,7 @@ This plan turns [the gameplay overview](GAMEPLAY_OVERVIEW.md) into a small, play
 - The game supports building/research/ship queues; attack, espionage, transport, harvest, and colonization missions; NPC respawns; battle reports; plunder; debris; and offline catch-up.
 - Rules and catalogs are provisional single-player values in `src/game/catalog.js`. Treat them as tuning defaults rather than confirmed original-game balance.
 - Automated verification: `npm test` currently covers 16 gameplay and persistence cases.
-- The shared shell follows the live SFC structure with a user-refined dark gray-on-black palette. The Overview is an empire-wide colony table; Colony Overview opens the selected planet dashboard; Universe is a navigable system map with a points-of-interest sidebar.
+- The shared shell follows the live SFC structure with a user-refined dark gray-on-black palette. The Overview is an empire-wide colony table; Colony Overview opens the selected planet dashboard; Universe is a navigable 15-row slot table with a points-of-interest sidebar.
 
 ## Decisions and constraints
 
@@ -40,7 +40,7 @@ This plan turns [the gameplay overview](GAMEPLAY_OVERVIEW.md) into a small, play
 
 ### 3. Implement the universe and fleet missions — implemented
 
-- Model a compact coordinate map with owned planets, empty colony slots, NPC targets, and debris fields. NPCs use a small set of data-driven defender and resource templates.
+- Model each system as 15 ordered positions: eight alternating planetary berths and seven orbital positions. Keep per-system slot layouts data-driven so orbital stations, anomalies, and other future objects can be added without locking in their types now. NPCs use a small set of data-driven defender and resource templates.
 - Add fleet inventory and dispatch for espionage, attack, transport, harvest, and colonization. Validate mission-specific ship requirements, fuel, cargo, and destination before departure.
 - Advance travel as scheduled events. Apply arrivals and return trips to the same simulation clock as production and queues.
 
@@ -78,7 +78,7 @@ Keep static catalogs separate from saves: buildings, technologies, ships, missio
 - [x] Transport moves resources between owned planets and colonization creates a new owned planet.
 - [x] Reloading preserves state; offline simulation advances production and resolves due queues and fleet events chronologically.
 - [x] Align the shared command bars with the main content, use the dark gray-on-black palette, and dock resources beside navigation on wide screens.
-- [x] Add an all-planets resource and ship table, a selected-colony dashboard, and a system-by-system universe map with a points-of-interest sidebar.
+- [x] Add an all-planets resource and ship table, a selected-colony dashboard, and a system-by-system 15-row slot table with planet/orbit descriptors, debris, actions, and a points-of-interest sidebar.
 - [ ] Compare Buildings, Research, Shipyard, Fleet Command, Universe, and Reports against page-specific references when available.
 
 ## Reference material
@@ -96,3 +96,4 @@ Keep static catalogs separate from saves: buildings, technologies, ships, missio
 - Refine the remaining page views as their HTML or screenshots become available.
 - Confirm which exact original/SFC2 rules to use for building timers, research effects, ship stats, battle outcomes, plunder, and debris before tuning the initial data catalog.
 - Revisit deterministic expected-value combat if the desired single-player feel requires randomized, per-battle ship losses.
+- Keep the exact contents and actions for orbital positions open; only the 15-slot, 8-berth/7-orbit structure is defined so far.

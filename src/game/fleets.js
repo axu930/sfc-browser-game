@@ -1,6 +1,7 @@
 import { GAME_RULES, MISSIONS, RESOURCE_KEYS, SHIPS } from "./catalog.js";
 import { simulateBattle } from "./combat.js";
 import { makeId } from "./state.js";
+import { isPlanetSlot } from "./universe.js";
 
 const EPSILON = 1e-9;
 const lower = (value) => String(value ?? "").toLowerCase();
@@ -123,6 +124,7 @@ function resolveTarget(state, targetId) {
 function ensureCollections(state) {
   state.planets ??= [];
   state.universe ??= { targets: [], debris: [] };
+  state.universe.slotLayouts ??= {};
   state.universe.targets ??= [];
   state.universe.debris ??= [];
   state.fleets ??= [];
@@ -188,6 +190,9 @@ function validateMissionTarget(state, origin, targetId, mission) {
   if (mission === "colonize") {
     const available = target.npcType === "empty" || target.habitable === true || target.available === true;
     if (!available) return { ok: false, message: "Choose an unclaimed, habitable location." };
+    if (!isPlanetSlot(state.universe, target.coordinates)) {
+      return { ok: false, message: "Colonization requires an available planetary berth." };
+    }
     if (playerTargetAtCoordinates(state, target.coordinates)) {
       return { ok: false, message: "That coordinate is already occupied by one of your colonies." };
     }
@@ -428,7 +433,7 @@ function resolveHarvest(state, fleet) {
 function resolveColonization(state, fleet, target) {
   const colonyShip = Number(fleet.ships.colonyShip || 0);
   const available = target.npcType === "empty" || target.habitable === true || target.available === true;
-  if (!colonyShip || !available || playerTargetAtCoordinates(state, target.coordinates)) {
+  if (!colonyShip || !available || !isPlanetSlot(state.universe, target.coordinates) || playerTargetAtCoordinates(state, target.coordinates)) {
     appendReport(state, {
       type: "fleet",
       title: "Colonization failed",

@@ -899,42 +899,26 @@ footer { border-color: var(--line); color: #929da1; }
 .universe-control-group { display: flex; align-items: center; gap: 9px; color: #bfc8ca; font-size: 11px; }
 .universe-control-group strong { color: #e0e5e6; font: 700 12px 'IBM Plex Mono', monospace; }
 .universe-control-group .button { min-width: 29px; padding: 4px 8px; font-size: 16px; line-height: 1; }
-.system-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-}
-.system-slot {
-  min-width: 0;
-  min-height: 72px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 7px;
-  padding: 8px 9px;
-  border: 1px solid #2c363a;
-  background: linear-gradient(145deg, #111719, #080c0e);
-  color: #d8dddf;
-  text-align: left;
-}
-button.system-slot { cursor: pointer; }
-button.system-slot:hover, button.system-slot.selected { border-color: #b7c1c4; background: #171e21; }
-.system-slot-empty { border-style: dashed; background: #070a0b; color: #869296; }
-.system-slot-number { color: #9ca8ab; font: 10px 'IBM Plex Mono', monospace; }
-.system-slot-copy { display: grid; gap: 3px; min-width: 0; }
-.system-slot-copy strong { overflow-wrap: anywhere; color: #d8dddf; font-size: 11px; }
-.system-slot-copy small { color: #929da1; font-size: 9px; }
-.system-slot-colony { border-left: 3px solid #bac5c8; }
-.system-slot-npc { border-left: 3px solid #9e888b; }
-.system-slot-unclaimed { border-left: 3px solid #7e8c90; }
-.system-slot-debris { border-left: 3px solid #a59f8c; }
-.system-slot-fleet { border-left: 3px solid #8c9ba0; }
-.system-legend { display: flex; flex-wrap: wrap; gap: 7px 15px; margin-top: 11px; color: #9ca7aa; font-size: 9px; }
-.system-legend span::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 5px; background: #bac5c8; }
-.system-legend-npc::before { background: #9e888b !important; }
-.system-legend-empty::before { background: #7e8c90 !important; }
-.system-legend-debris::before { background: #a59f8c !important; }
+.system-table { min-width: 790px; table-layout: fixed; }
+.system-table th:nth-child(1) { width: 46px; text-align: center; }
+.system-table th:nth-child(2) { width: 205px; }
+.system-table th:nth-child(3) { width: 145px; }
+.system-table th:nth-child(4) { width: 165px; }
+.system-table th:nth-child(5) { width: 145px; }
+.system-table td { vertical-align: middle; }
+.system-slot-row:nth-child(even) { background: #0d1214; }
+.system-slot-row-orbit td:first-child { color: #778387; }
+.system-slot-row-planet td:first-child { color: #d2d9db; }
+.slot-number { text-align: center; }
+.slot-location { display: inline-block; margin: 0; padding: 0; border: 0; background: transparent; color: #e0e5e6; font-size: 11px; font-weight: 700; text-align: left; cursor: pointer; }
+.slot-location:hover, .slot-location[aria-pressed="true"] { color: #fff; text-decoration: underline; text-decoration-color: #aab5b8; text-underline-offset: 3px; }
+.slot-location-static { color: #cbd3d5; font-size: 11px; }
+.system-table .subtext { display: block; margin-top: 3px; color: #929da1; font-size: 9px; }
+.slot-debris { font-size: 10px; white-space: normal; }
+.slot-presence { color: #aeb9bc; font-size: 10px; }
+.slot-actions { white-space: normal; }
+.slot-actions .button { margin: 1px 4px 1px 0; padding: 4px 7px; font-size: 9px; }
+.slot-no-action { color: #778387; }
 .poi-list { display: grid; gap: 6px; }
 .poi-item {
   width: 100%;
@@ -960,7 +944,6 @@ button.system-slot:hover, button.system-slot.selected { border-color: #b7c1c4; b
 }
 @media (max-width: 560px) {
   .universe-controls { align-items: flex-start; flex-direction: column; }
-  .system-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-  .system-slot { min-height: 68px; padding: 7px; }
+  .system-table { min-width: 790px; }
   .empire-table { min-width: 580px; }
 }

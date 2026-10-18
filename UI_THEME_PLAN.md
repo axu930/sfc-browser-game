@@ -1,6 +1,6 @@
 # Starfleet Commander UI Theme Plan
 
-**Status:** Reference captured; current prototype direction refined to an empire overview, system map, and dark gray-on-black palette.
+**Status:** Reference captured; current prototype direction refined to an empire overview, system slot table, and dark gray-on-black palette.
 
 Use the live Starfleet Commander planet overview as the visual reference for the single-player interface. The goal is to carry over its recognizable space-game layout, contrast, and color cues while keeping the local game readable, responsive, and independent of the live game's assets or account actions.
 
@@ -39,7 +39,7 @@ The prototype keeps the live site's compact command-bar structure, while followi
 - Use charcoal and black surfaces with light gray text for the general interface. Reserve light boxes with dark text for high-value readouts such as fleet counts and research levels.
 - Make Overview the all-planets view: one compact table with per-colony Ore, Crystal, Hydrogen, and stationed ships. Show empire-wide resource totals in the command ribbon.
 - Make Colony Overview a button in the colony navigation row. It opens the detailed dashboard for the currently selected planet.
-- Make Universe a system-by-system view with previous/next navigation, a 15-slot system map, and a points-of-interest sidebar for colonies, contacts, fleets, and debris.
+- Make Universe a system-by-system view with previous/next navigation, a 15-row slot table, and a points-of-interest sidebar for colonies, contacts, fleets, and debris. Each system has eight planetary berths separated by seven orbital positions; orbital contents remain open for later design.
 
 ## Layout and component direction
 
@@ -48,7 +48,7 @@ The prototype keeps the live site's compact command-bar structure, while followi
 3. **Resource dock:** Align the three resource readouts at the right edge of the two-row navigation stack. Show empire totals on Overview and selected-colony balances on colony pages.
 4. **Navigation:** Keep global destinations in a primary bar and Colony Overview, Buildings, Shipyard, and Research in a thinner secondary bar. Use light-gray text and a restrained silver active marker.
 5. **All-planets view:** Use a concise full-width table with each colony's coordinates, resource amounts, and ship inventory. Selecting a colony opens Colony Overview.
-6. **Colony and universe views:** Keep the detailed economy, infrastructure, queue, and activity panels on Colony Overview. The Universe view uses a 15-slot system map and a side panel for points of interest and related actions.
+6. **Colony and universe views:** Keep the detailed economy, infrastructure, queue, and activity panels on Colony Overview. The Universe view uses a 15-row table that describes each planet/orbit position, debris field, presence, and available action, with a side panel for points of interest.
 7. **Responsive behavior:** Preserve the planet strip as a horizontal scroller. On narrow screens, move resources beneath navigation, stack the universe sidebar below its map, and let wide tables scroll horizontally.
 
 ## Implementation boundaries

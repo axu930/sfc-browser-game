@@ -4,6 +4,7 @@ import { getBuildingCost, getResearchCost, getShipCost, queueBuilding, queueShip
 import { dispatchMission } from "./game/fleets.js";
 import { advanceGame } from "./game/simulation.js";
 import { loadState, resetState, saveState } from "./game/state.js";
+import { createUnclaimedWorldTarget, getSystemSlotLayout, isPlanetSlot, UNIVERSE_LIMITS } from "./game/universe.js";
 
 const pageTitles = {
   overview: "All Planets", colonyOverview: "Colony Overview", buildings: "Planetary Buildings", research: "Research Projects",
@@ -226,6 +227,7 @@ function renderFleets(world) {
 
 function systemPointsOfInterest() {
   const inSystem = point => Number(point?.galaxy) === selectedUniverseGalaxy && Number(point?.system) === selectedUniverseSystem;
+  const layout = getSystemSlotLayout(state.universe, selectedUniverseGalaxy, selectedUniverseSystem);
   const colonies = state.planets.filter(item => inSystem(item.coordinates)).map(item => ({
     poiId: `colony:${item.id}`, sourceId: item.id, kind: "colony", name: item.name,
     coordinates: item.coordinates, ships: item.ships, resources: item.resources
@@ -242,7 +244,16 @@ function systemPointsOfInterest() {
     poiId: `fleet:${item.id}`, sourceId: item.id, kind: "fleet", name: `${MISSIONS[item.mission]?.name || "Fleet"} Fleet`,
     coordinates: item.targetCoordinates, ships: item.ships, status: item.status
   }));
-  return [...colonies, ...targets, ...debris, ...fleets].sort((a, b) => Number(a.coordinates.slot) - Number(b.coordinates.slot));
+  const occupiedPlanetSlots = new Set([
+    ...state.planets.map(item => item.coordinates),
+    ...(state.universe.targets || []).map(item => item.coordinates)
+  ].filter(inSystem).map(point => Number(point.slot)));
+  const availableWorlds = layout.filter(definition => definition.kind === "planet" && !occupiedPlanetSlots.has(definition.slot)).map(definition => {
+    const target = createUnclaimedWorldTarget({ galaxy: selectedUniverseGalaxy, system: selectedUniverseSystem, slot: definition.slot });
+    return { poiId: `available:${target.id}`, sourceId: target.id, kind: "empty", name: "Unclaimed World", coordinates: target.coordinates, resources: target.resources, ships: target.ships, virtual: true };
+  });
+  return [...colonies, ...targets, ...availableWorlds, ...debris, ...fleets]
+    .sort((a, b) => Number(a.coordinates.slot) - Number(b.coordinates.slot));
 }
 
 function poiKindLabel(point) {
@@ -266,7 +277,9 @@ function poiSummary(point) {
 function poiAction(point) {
   if (point.kind === "colony") return `<button class="button" data-open-colony="${escapeHtml(point.sourceId)}">Open Colony</button>`;
   if (point.kind === "npc") return `<button class="button" data-navigate="fleets" data-target="${escapeHtml(point.sourceId)}">Plan Attack</button>`;
-  if (point.kind === "empty") return `<button class="button" data-navigate="fleets" data-target="${escapeHtml(point.sourceId)}" data-mission="colonize">Plan Colonization</button>`;
+  if (point.kind === "empty" && !isPlanetSlot(state.universe, point.coordinates)) return `<span class="slot-no-action">—</span>`;
+  if (point.kind === "empty" && point.virtual) return `<button class="button" data-create-world="true" data-galaxy="${point.coordinates.galaxy}" data-system="${point.coordinates.system}" data-slot="${point.coordinates.slot}">Colonize</button>`;
+  if (point.kind === "empty") return `<button class="button" data-navigate="fleets" data-target="${escapeHtml(point.sourceId)}" data-mission="colonize">Colonize</button>`;
   if (point.kind === "debris") return `<button class="button" data-navigate="fleets" data-target="${escapeHtml(point.sourceId)}" data-mission="harvest">Harvest Debris</button>`;
   return `<button class="button" data-navigate="fleets">Fleet Command</button>`;
 }
@@ -275,14 +288,29 @@ function renderUniverse() {
   const points = systemPointsOfInterest();
   if (!points.some(point => point.poiId === selectedPoiId)) selectedPoiId = points[0]?.poiId || "";
   const selectedPoint = points.find(point => point.poiId === selectedPoiId);
-  const slots = Array.from({ length: 15 }, (_, index) => {
-    const slot = index + 1;
-    const occupants = points.filter(point => Number(point.coordinates.slot) === slot);
-    const primary = occupants[0];
-    if (!primary) return `<div class="system-slot system-slot-empty"><span class="system-slot-number">${slot}</span><span class="system-slot-copy"><strong>Open Slot</strong><small>Unoccupied</small></span></div>`;
-    const isSelected = occupants.some(point => point.poiId === selectedPoiId);
-    const slotType = primary.kind === "empty" ? "unclaimed" : primary.kind;
-    return `<button class="system-slot system-slot-${slotType}${isSelected ? " selected" : ""}" data-poi-id="${escapeHtml(primary.poiId)}" aria-pressed="${isSelected}"><span class="system-slot-number">${slot}</span><span class="system-slot-copy"><strong>${escapeHtml(primary.name)}</strong><small>${poiKindLabel(primary)}${occupants.length > 1 ? ` · +${occupants.length - 1} more` : ""}</small></span></button>`;
+  const layout = getSystemSlotLayout(state.universe, selectedUniverseGalaxy, selectedUniverseSystem);
+  const slotRows = layout.map(definition => {
+    const occupants = points.filter(point => Number(point.coordinates.slot) === definition.slot);
+    const primary = occupants.find(point => point.kind !== "debris" && point.kind !== "fleet") || occupants[0];
+    const debris = occupants.filter(point => point.kind === "debris");
+    const debrisSummary = debris.length
+      ? `${number(debris.reduce((sum, field) => sum + Number(field.resources?.ore || 0), 0))} Ore · ${number(debris.reduce((sum, field) => sum + Number(field.resources?.crystal || 0), 0))} Crystal`
+      : "—";
+    const locationName = primary?.name || (definition.kind === "planet" ? "Unclaimed World" : "Open Orbit");
+    const locationType = primary ? poiKindLabel(primary) : definition.label;
+    const locationButton = primary
+      ? `<button class="slot-location" data-poi-id="${escapeHtml(primary.poiId)}" aria-pressed="${primary.poiId === selectedPoiId}">${escapeHtml(locationName)}</button>`
+      : `<strong class="slot-location-static">${escapeHtml(locationName)}</strong>`;
+    const presence = occupants.map(point => {
+      if (point.kind === "colony") return "Commander colony";
+      if (point.kind === "npc") return `${Object.values(point.ships || {}).reduce((sum, count) => sum + Number(count || 0), 0)} defenders`;
+      if (point.kind === "empty") return "Available to colonize";
+      if (point.kind === "debris") return "Recoverable debris";
+      return `${point.status || "In transit"} fleet`;
+    });
+    if (!presence.length) presence.push(definition.kind === "planet" ? "Unclaimed planet berth" : "Available orbital position");
+    const actions = occupants.map(poiAction).filter(Boolean).join(" ");
+    return `<tr class="system-slot-row system-slot-row-${definition.kind}"><td class="mono slot-number">${definition.slot}</td><td>${locationButton}<span class="subtext">${locationType}${occupants.length > 1 ? ` · ${occupants.length} objects` : ""}</span></td><td class="cost-line slot-debris">${debrisSummary}</td><td class="slot-presence">${presence.map(escapeHtml).join(" · ")}</td><td class="slot-actions">${actions || `<span class="slot-no-action">—</span>`}</td></tr>`;
   }).join("");
   const poiRows = points.map(point => `<button class="poi-item${point.poiId === selectedPoiId ? " selected" : ""}" data-poi-id="${escapeHtml(point.poiId)}" aria-pressed="${point.poiId === selectedPoiId}"><span class="poi-item-type">${poiKindLabel(point)}</span><strong>${escapeHtml(point.name)}</strong><span class="poi-item-meta">Slot ${number(point.coordinates.slot)} · ${escapeHtml(poiSummary(point))}</span></button>`).join("");
   const selectedCard = selectedPoint
@@ -290,10 +318,10 @@ function renderUniverse() {
     : card("Selected Point", `<div class="empty-state">Select a point in the system to inspect it.</div>`);
   return `<div class="universe-layout">
     <div class="universe-main">
-      ${card("System View", `<div class="universe-controls">
-        <div class="universe-control-group"><button class="button" data-universe-step="galaxy" data-delta="-1" aria-label="Previous galaxy" ${selectedUniverseGalaxy <= 1 ? "disabled" : ""}>‹</button><span>Galaxy ${selectedUniverseGalaxy}</span><button class="button" data-universe-step="galaxy" data-delta="1" aria-label="Next galaxy">›</button></div>
-        <div class="universe-control-group"><button class="button" data-universe-step="system" data-delta="-1" aria-label="Previous system" ${selectedUniverseSystem <= 1 ? "disabled" : ""}>‹</button><strong>System ${selectedUniverseSystem}</strong><button class="button" data-universe-step="system" data-delta="1" aria-label="Next system">›</button></div>
-      </div><div class="system-grid" aria-label="Galaxy ${selectedUniverseGalaxy}, system ${selectedUniverseSystem}">${slots}</div><div class="system-legend"><span class="system-legend-colony">Colony</span><span class="system-legend-npc">Hostile contact</span><span class="system-legend-empty">Unclaimed world</span><span class="system-legend-debris">Debris</span></div>`, "Navigate neighboring systems and select a slot to inspect known locations")}
+      ${card("System Slots", `<div class="universe-controls">
+        <div class="universe-control-group"><button class="button" data-universe-step="galaxy" data-delta="-1" aria-label="Previous galaxy" ${selectedUniverseGalaxy <= 1 ? "disabled" : ""}>‹</button><span>Galaxy ${selectedUniverseGalaxy}</span><button class="button" data-universe-step="galaxy" data-delta="1" aria-label="Next galaxy" ${selectedUniverseGalaxy >= UNIVERSE_LIMITS.galaxies ? "disabled" : ""}>›</button></div>
+        <div class="universe-control-group"><button class="button" data-universe-step="system" data-delta="-1" aria-label="Previous system" ${selectedUniverseSystem <= 1 ? "disabled" : ""}>‹</button><strong>System ${selectedUniverseSystem}</strong><button class="button" data-universe-step="system" data-delta="1" aria-label="Next system" ${selectedUniverseSystem >= UNIVERSE_LIMITS.systemsPerGalaxy ? "disabled" : ""}>›</button></div>
+      </div><div class="table-wrap system-table-wrap"><table class="system-table" aria-label="Galaxy ${selectedUniverseGalaxy}, system ${selectedUniverseSystem} slots"><thead><tr><th>Slot</th><th>Planet / orbit</th><th>Debris field</th><th>Presence</th><th>Actions</th></tr></thead><tbody>${slotRows}</tbody></table></div>`, "Fifteen positions per system · eight planetary berths · seven orbital positions")}
     </div>
     <aside class="universe-sidebar">${card("Points of Interest", poiRows || `<div class="empty-state">No known points of interest in this system.</div>`, `${points.length} known location${points.length === 1 ? "" : "s"}`)}${selectedCard}</aside>
   </div>`;
@@ -342,10 +370,36 @@ document.addEventListener("click", event => {
   const systemStep = event.target.closest("[data-universe-step]");
   if (systemStep) {
     const delta = Number(systemStep.dataset.delta) || 0;
-    if (systemStep.dataset.universeStep === "galaxy") selectedUniverseGalaxy = Math.max(1, selectedUniverseGalaxy + delta);
-    else selectedUniverseSystem = Math.max(1, selectedUniverseSystem + delta);
+    if (systemStep.dataset.universeStep === "galaxy") selectedUniverseGalaxy = Math.min(UNIVERSE_LIMITS.galaxies, Math.max(1, selectedUniverseGalaxy + delta));
+    else selectedUniverseSystem = Math.min(UNIVERSE_LIMITS.systemsPerGalaxy, Math.max(1, selectedUniverseSystem + delta));
     selectedPoiId = "";
     render();
+    return;
+  }
+  const createWorld = event.target.closest("[data-create-world]");
+  if (createWorld) {
+    const point = {
+      galaxy: Number(createWorld.dataset.galaxy),
+      system: Number(createWorld.dataset.system),
+      slot: Number(createWorld.dataset.slot)
+    };
+    if (!isPlanetSlot(state.universe, point) || state.planets.some(item => coordinates(item.coordinates) === coordinates(point))) {
+      showToast("That planetary berth is no longer available.", true);
+      return render();
+    }
+    const existingTarget = (state.universe.targets || []).find(item => coordinates(item.coordinates) === coordinates(point));
+    if (existingTarget && existingTarget.npcType !== "empty") {
+      showToast("That location is occupied.", true);
+      return render();
+    }
+    const target = existingTarget || createUnclaimedWorldTarget(point);
+    state.universe.targets ??= [];
+    if (!existingTarget) state.universe.targets.push(target);
+    persist();
+    currentPage = "fleets";
+    render();
+    $("#mission-target").value = target.id;
+    $("#mission-kind").value = "colonize";
     return;
   }
   const pointOfInterest = event.target.closest("[data-poi-id]");
@@ -372,6 +426,8 @@ document.addEventListener("click", event => {
     if (nav.dataset.page === "universe" && currentPage !== "universe") {
       selectedUniverseGalaxy = Number(planet()?.coordinates?.galaxy) || selectedUniverseGalaxy;
       selectedUniverseSystem = Number(planet()?.coordinates?.system) || selectedUniverseSystem;
+      selectedUniverseGalaxy = Math.min(UNIVERSE_LIMITS.galaxies, Math.max(1, selectedUniverseGalaxy));
+      selectedUniverseSystem = Math.min(UNIVERSE_LIMITS.systemsPerGalaxy, Math.max(1, selectedUniverseSystem));
       selectedPoiId = "";
     }
     currentPage = nav.dataset.page;

@@ -1,5 +1,5 @@
 import { GAME_RULES } from "./catalog.js";
-import { createInitialUniverse } from "./universe.js";
+import { createInitialUniverse, migrateLegacyPlanetarySlots } from "./universe.js";
 
 export const SAVE_KEY = "sfc-browser-game-save";
 export const SAVE_VERSION = 1;
@@ -13,7 +13,7 @@ export function createInitialState(now = Date.now()) {
     planets: [{
       id: "planet-home",
       name: "New Terra",
-      coordinates: { galaxy: 1, system: 1, slot: 4 },
+      coordinates: { galaxy: 1, system: 1, slot: 3 },
       resources: { ore: 12000, crystal: 9000, hydrogen: 5000 },
       buildings: {
         capitol: 1, oreMine: 4, crystalMine: 3, hydrogenSynthesizer: 2, solarPlant: 6,
@@ -44,7 +44,7 @@ export function loadState(storage = globalThis.localStorage, now = Date.now()) {
     if (!parsed || parsed.schemaVersion !== SAVE_VERSION || !Array.isArray(parsed.planets)) {
       return createInitialState(now);
     }
-    return parsed;
+    return migrateLegacyPlanetarySlots(parsed);
   } catch {
     return createInitialState(now);
   }
