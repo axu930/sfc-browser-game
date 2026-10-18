@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#06101c" />
+    <title>Starfleet Command — Single Player</title>
+    <link rel="stylesheet" href="./styles/game.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="brand"><span class="brand-mark">✦</span><span>STARFLEET COMMAND</span><small>Single Player</small></div>
+      <div class="universe-status"><span class="status-dot"></span><span>SECTOR 1 · COMMANDER</span><time id="clock-time"></time></div>
+    </header>
+
+    <nav id="planet-strip" class="planet-strip" aria-label="Owned planets"></nav>
+
+    <section class="resource-ribbon" aria-label="Planet resources">
+      <div class="resource-ribbon-title">Planetary reserves</div>
+      <div id="resource-bar" class="resource-bar"></div>
+    </section>
+
+    <nav class="main-nav" aria-label="Main navigation">
+      <button class="nav-item active" data-page="overview">Overview</button>
+      <button class="nav-item" data-page="fleets">Fleet Command</button>
+      <button class="nav-item" data-page="universe">Universe</button>
+      <button class="nav-item" data-page="reports">Reports <span id="report-count" class="nav-count"></span></button>
+    </nav>
+    <nav class="planet-nav" aria-label="Planet facilities">
+      <span class="planet-nav-label">Colony</span>
+      <button class="planet-nav-item" data-page="buildings">Buildings</button>
+      <button class="planet-nav-item" data-page="shipyard">Shipyard</button>
+      <button class="planet-nav-item" data-page="research">Research</button>
+    </nav>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="panel planet-panel">
+          <div class="panel-heading"><span>COLONY PROFILE</span><span class="status-dot"></span></div>
+          <div class="planet-portrait" aria-hidden="true"><div class="planet-globe"></div><span class="planet-orbit"></span></div>
+          <div id="planet-select" class="planet-select"></div>
+          <div id="planet-summary" class="planet-summary"></div>
+        </section>
+        <section class="panel side-panel">
+          <div class="panel-heading">PLANET STATUS</div>
+          <div id="production-summary" class="status-list"></div>
+        </section>
+        <section class="panel side-panel">
+          <div class="panel-heading">FLEET STATUS</div>
+          <div id="fleet-summary" class="status-list"></div>
+        </section>
+        <button id="reset-save" class="button button-danger button-wide">Reset Commander Save</button>
+      </aside>
+
+        <section class="content-column">
+        <div class="page-title-row">
+          <div><div class="eyebrow">STAR SYSTEM 1</div><h1 id="page-title">Planet Overview</h1></div>
+          <div class="system-clock"><span class="status-dot"></span> SIMULATION ONLINE</div>
+        </div>
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+        <div id="game-content" class="game-content"></div>
+      </section>
+    </main>
+
+    <footer><span>Single-player prototype · Provisional rules</span><span>Autosave enabled</span></footer>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
