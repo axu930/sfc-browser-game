@@ -23,5 +23,6 @@ npm test
 - [Gameplay overview](GAMEPLAY_OVERVIEW.md)
 - [Implementation plan and acceptance checklist](IMPLEMENTATION_PLAN.md)
 - [Original UI theme plan](UI_THEME_PLAN.md)
+- [Design changes from original SFC](changes/README.md)
 
 The rules catalog is intentionally provisional. The shell adapts the live SFC layout into an all-planets overview, a separate colony dashboard, and a navigable system slot table; see [the UI theme plan](UI_THEME_PLAN.md) for reference notes and the current visual direction.
