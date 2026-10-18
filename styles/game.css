@@ -782,3 +782,82 @@ footer { border-color: var(--line); color: #929da1; }
   .resource-ribbon-inner { align-items: center; }
   .main-nav-inner, .planet-nav-inner { width: 100%; }
 }
+
+/* Dock the three resource readouts beside the two navigation rows. */
+.command-nav-row {
+  border-bottom: 1px solid var(--line);
+  background: #070a0be8;
+}
+.command-nav-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 270px;
+  align-items: stretch;
+}
+.command-nav-stack {
+  display: grid;
+  grid-template-rows: 41px 32px;
+  min-width: 0;
+}
+.command-nav-stack .main-nav,
+.command-nav-stack .planet-nav {
+  min-width: 0;
+}
+.command-nav-stack .main-nav { border-bottom: 1px solid var(--line); }
+.command-nav-stack .planet-nav { border-bottom: 0; }
+.command-nav-stack .main-nav-inner,
+.command-nav-stack .planet-nav-inner { max-width: none; padding-inline: 0; }
+.resource-ribbon {
+  min-width: 0;
+  min-height: 73px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: #080c0ee8;
+}
+.resource-bar {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+.resource-chip {
+  min-width: 0;
+  min-height: 24px;
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 9px;
+  border: 0;
+  border-bottom: 1px solid #222a2d;
+  background: transparent;
+}
+.resource-chip:last-child { border-bottom: 0; }
+.resource-symbol { width: 16px; height: 16px; flex-basis: 16px; }
+.resource-label { color: #b8c1c3; }
+.resource-value { margin-left: 0; color: #e0e4e5; text-align: right; }
+.resource-rate { color: #929da1; }
+
+@media (max-width: 760px) {
+  .command-nav-layout { grid-template-columns: minmax(0, 1fr); }
+  .resource-ribbon {
+    min-height: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+  .resource-bar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .resource-chip {
+    min-height: 37px;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    border-right: 1px solid #222a2d;
+    border-bottom: 0;
+  }
+  .resource-chip:last-child { border-right: 0; }
+  .resource-rate { display: none; }
+}
+@media (max-width: 560px) {
+  .resource-chip { min-width: 0; gap: 5px; padding-inline: 7px; }
+  .resource-label { display: none; }
+  .resource-value { font-size: 10px; }
+}
