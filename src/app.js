@@ -106,9 +106,24 @@ function card(title, body, subtitle = "") {
   return `<section class="content-card"><div class="content-card-header"><div><h2>${title}</h2>${subtitle ? `<div class="subtext">${subtitle}</div>` : ""}</div></div><div class="content-card-body">${body}</div></section>`;
 }
 
-function renderQueue(world) {
-  const jobs = [...(world.constructionQueue || []), ...(world.researchQueue || [])].sort((a, b) => a.completesAt - b.completesAt);
-  if (!jobs.length) return `<div class="empty-state">No active construction or research projects.</div>`;
+function renderQueue(world, queueType = "all") {
+  const constructionJobs = world.constructionQueue || [];
+  const researchJobs = world.researchQueue || [];
+  const jobs = (queueType === "research"
+    ? researchJobs
+    : queueType === "ships"
+      ? constructionJobs.filter(job => job.type === "ships")
+      : queueType === "construction"
+        ? constructionJobs
+        : [...constructionJobs, ...researchJobs]
+  ).sort((a, b) => a.completesAt - b.completesAt);
+  if (!jobs.length) {
+    const emptyMessage = queueType === "research" ? "No research projects underway."
+      : queueType === "ships" ? "No ships under construction."
+        : queueType === "construction" ? "No construction projects underway."
+          : "No active construction or research projects.";
+    return `<div class="empty-state">${emptyMessage}</div>`;
+  }
   const now = state.now;
   return `<div class="table-wrap"><table><thead><tr><th>Project</th><th>Completion</th><th>Remaining</th><th>Status</th></tr></thead><tbody>${jobs.map(job => {
     const isResearch = Boolean(job.technology);
@@ -180,7 +195,7 @@ function renderBuildings(world) {
           : building.description;
     return `<tr><td><strong>${escapeHtml(building.name)}</strong><span class="subtext">${escapeHtml(label)}</span></td><td><span class="level-badge">${level}</span></td><td class="cost-line">${costText(cost)}</td><td class="mono">${formatDuration(getBuildingDurationSeconds(world, building.id, level))}</td><td>${requirement ? `<button class="button" data-build="${escapeHtml(building.id)}">Upgrade</button>` : `<span class="tag">Prerequisite missing</span>`}</td></tr>`;
   }).join("");
-  return `${card("Construction Queue", renderQueue(world), "Building and ship projects currently underway")}${card("Buildings", `<div class="table-wrap"><table><thead><tr><th>Facility</th><th>Level</th><th>Next cost</th><th>Time</th><th>Order</th></tr></thead><tbody>${rows}</tbody></table></div>`, "Spend planetary resources to expand infrastructure")}`;
+  return `${card("Construction Queue", renderQueue(world, "construction"), "Building and ship projects currently underway")}${card("Buildings", `<div class="table-wrap"><table><thead><tr><th>Facility</th><th>Level</th><th>Next cost</th><th>Time</th><th>Order</th></tr></thead><tbody>${rows}</tbody></table></div>`, "Spend planetary resources to expand infrastructure")}`;
 }
 
 function renderResearch(world) {
@@ -190,7 +205,7 @@ function renderResearch(world) {
     const unlocked = meetsBuilding(world, tech.requirements) && meetsResearch(tech.research || {});
     return `<tr><td><strong>${escapeHtml(tech.name)}</strong><span class="subtext">${escapeHtml(tech.description)}</span></td><td><span class="level-badge research-level-badge">${level}</span></td><td class="cost-line">${costText(cost)}</td><td class="mono">${formatDuration(getResearchDurationSeconds(world, tech.id, level))}</td><td>${unlocked ? `<button class="button" data-research="${escapeHtml(tech.id)}">Research</button>` : `<span class="tag">Locked</span>`}</td></tr>`;
   }).join("");
-  return `${card("Research Queue", renderQueue(world))}${card("Technology Database", `<div class="table-wrap"><table><thead><tr><th>Technology</th><th>Level</th><th>Next cost</th><th>Time</th><th>Order</th></tr></thead><tbody>${rows}</tbody></table></div>`, "Technology unlocks ships and improves fleet capabilities")}`;
+  return `${card("Research Queue", renderQueue(world, "research"))}${card("Technology Database", `<div class="table-wrap"><table><thead><tr><th>Technology</th><th>Level</th><th>Next cost</th><th>Time</th><th>Order</th></tr></thead><tbody>${rows}</tbody></table></div>`, "Technology unlocks ships and improves fleet capabilities")}`;
 }
 
 function renderShipyard(world) {
@@ -200,7 +215,7 @@ function renderShipyard(world) {
     const damage = [ship.ore ? `${number(ship.ore)} O` : "", ""].filter(Boolean).join(" ");
     return `<tr><td><strong>${escapeHtml(ship.name)}</strong><span class="subtext">${escapeHtml(ship.role)} · Cargo ${number(ship.cargo)} · ${escapeHtml(ship.description)}</span></td><td class="cost-line">${costText(cost)}</td><td class="mono">${formatDuration(getShipDurationSeconds(world, ship.id, 1))}</td><td>${unlocked ? `<form class="inline-ship-form" data-ship-form="${escapeHtml(ship.id)}"><label class="visually-hidden" for="qty-${escapeHtml(ship.id)}">Quantity</label><input id="qty-${escapeHtml(ship.id)}" name="quantity" type="number" min="1" max="100" value="1"><button class="button" type="submit">Build</button></form>` : `<span class="tag">Locked</span>`}</td><td class="mono">${number(world.ships[ship.id] || 0)}</td></tr>`;
   }).join("");
-  return `${card("Ship Construction Queue", renderQueue(world))}${card("Shipyard", `<div class="table-wrap"><table><thead><tr><th>Ship / role</th><th>Unit cost</th><th>Time</th><th>Order</th><th>Owned</th></tr></thead><tbody>${rows}</tbody></table></div>`, "Ship availability follows facility and technology requirements")}`;
+  return `${card("Ship Construction Queue", renderQueue(world, "ships"))}${card("Shipyard", `<div class="table-wrap"><table><thead><tr><th>Ship / role</th><th>Unit cost</th><th>Time</th><th>Order</th><th>Owned</th></tr></thead><tbody>${rows}</tbody></table></div>`, "Ship availability follows facility and technology requirements")}`;
 }
 
 function renderTargetSummary() {
