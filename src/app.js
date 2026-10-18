@@ -60,7 +60,7 @@ function advanceSimulation() {
 function renderHeader() {
   const activePlanet = planet();
   const rates = getPlanetProduction(activePlanet);
-  $("#planet-strip").innerHTML = state.planets.map(item => `
+  $("#planet-strip-inner").innerHTML = state.planets.map(item => `
     <button class="colony-chip${item.id === activePlanet.id ? " selected" : ""}" data-planet="${escapeHtml(item.id)}" aria-pressed="${item.id === activePlanet.id}">
       <span class="colony-orb" aria-hidden="true"></span>
       <span class="colony-copy"><strong>${escapeHtml(item.name)}</strong><small>${coordinates(item.coordinates)}</small></span>
@@ -75,6 +75,8 @@ function renderHeader() {
   $("#planet-summary").innerHTML = `<div class="profile-facts"><div><span>Active facilities</span><strong>${number(structures)}</strong></div><div><span>Ships in orbit</span><strong>${number(stationedShips)}</strong></div></div>`;
   $("#report-count").textContent = state.reports.length ? `(${Math.min(state.reports.length, 99)})` : "";
   $("#clock-time").textContent = new Date(state.now).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const point = activePlanet?.coordinates;
+  $("#page-context").textContent = point ? `GALAXY ${point.galaxy} · SYSTEM ${point.system}` : "COLONY COMMAND";
   renderSidebar();
 }
 
@@ -159,7 +161,7 @@ function renderResearch(world) {
     const level = state.research[tech.id] || 0;
     const cost = getResearchCost(tech.id, level);
     const unlocked = meetsBuilding(world, tech.requirements) && meetsResearch(tech.research || {});
-    return `<tr><td><strong>${escapeHtml(tech.name)}</strong><span class="subtext">${escapeHtml(tech.description)}</span></td><td><span class="level-badge">${level}</span></td><td class="cost-line">${costText(cost)}</td><td class="mono">${formatDuration(tech.baseSeconds * Math.pow(tech.growth, level))}</td><td>${unlocked ? `<button class="button" data-research="${escapeHtml(tech.id)}">Research</button>` : `<span class="tag">Locked</span>`}</td></tr>`;
+    return `<tr><td><strong>${escapeHtml(tech.name)}</strong><span class="subtext">${escapeHtml(tech.description)}</span></td><td><span class="level-badge research-level-badge">${level}</span></td><td class="cost-line">${costText(cost)}</td><td class="mono">${formatDuration(tech.baseSeconds * Math.pow(tech.growth, level))}</td><td>${unlocked ? `<button class="button" data-research="${escapeHtml(tech.id)}">Research</button>` : `<span class="tag">Locked</span>`}</td></tr>`;
   }).join("");
   return `${card("Research Queue", renderQueue(world))}${card("Technology Database", `<div class="table-wrap"><table><thead><tr><th>Technology</th><th>Level</th><th>Next cost</th><th>Time</th><th>Order</th></tr></thead><tbody>${rows}</tbody></table></div>`, "Technology unlocks ships and improves fleet capabilities")}`;
 }

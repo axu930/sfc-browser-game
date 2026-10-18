@@ -22,5 +22,6 @@ npm test
 
 - [Gameplay overview](GAMEPLAY_OVERVIEW.md)
 - [Implementation plan and acceptance checklist](IMPLEMENTATION_PLAN.md)
+- [Original UI theme plan](UI_THEME_PLAN.md)
 
-The rules catalog is intentionally provisional. The shared browser shell and planet overview now follow the structure of the user-supplied SFC overview HTML; other page views can be refined as their references become available.
+The rules catalog is intentionally provisional. The browser shell and planet overview follow the live SFC layout and palette; see [the UI theme plan](UI_THEME_PLAN.md) for the reference details and remaining page refinements.

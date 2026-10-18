@@ -9,28 +9,36 @@
   </head>
   <body>
     <header class="masthead">
-      <div class="brand"><span class="brand-mark">✦</span><span>STARFLEET COMMAND</span><small>Single Player</small></div>
-      <div class="universe-status"><span class="status-dot"></span><span>SECTOR 1 · COMMANDER</span><time id="clock-time"></time></div>
+      <div class="bar-inner masthead-inner">
+        <div class="brand"><span class="brand-mark" aria-hidden="true">✦</span><span>STARFLEET COMMAND</span><small>Single Player</small></div>
+        <div class="universe-status"><span class="status-dot"></span><span>SINGLE-PLAYER SECTOR</span><time id="clock-time"></time></div>
+      </div>
     </header>
 
-    <nav id="planet-strip" class="planet-strip" aria-label="Owned planets"></nav>
+    <nav id="planet-strip" class="planet-strip" aria-label="Owned planets"><div id="planet-strip-inner" class="bar-inner planet-strip-inner"></div></nav>
 
     <section class="resource-ribbon" aria-label="Planet resources">
-      <div class="resource-ribbon-title">Planetary reserves</div>
-      <div id="resource-bar" class="resource-bar"></div>
+      <div class="bar-inner resource-ribbon-inner">
+        <div class="resource-ribbon-title">Planetary reserves</div>
+        <div id="resource-bar" class="resource-bar"></div>
+      </div>
     </section>
 
     <nav class="main-nav" aria-label="Main navigation">
-      <button class="nav-item active" data-page="overview">Overview</button>
-      <button class="nav-item" data-page="fleets">Fleet Command</button>
-      <button class="nav-item" data-page="universe">Universe</button>
-      <button class="nav-item" data-page="reports">Reports <span id="report-count" class="nav-count"></span></button>
+      <div class="bar-inner main-nav-inner">
+        <button class="nav-item active" data-page="overview">Overview</button>
+        <button class="nav-item" data-page="fleets">Fleet Command</button>
+        <button class="nav-item" data-page="universe">Universe</button>
+        <button class="nav-item" data-page="reports">Reports <span id="report-count" class="nav-count"></span></button>
+      </div>
     </nav>
     <nav class="planet-nav" aria-label="Planet facilities">
-      <span class="planet-nav-label">Colony</span>
-      <button class="planet-nav-item" data-page="buildings">Buildings</button>
-      <button class="planet-nav-item" data-page="shipyard">Shipyard</button>
-      <button class="planet-nav-item" data-page="research">Research</button>
+      <div class="bar-inner planet-nav-inner">
+        <span class="planet-nav-label">Colony</span>
+        <button class="planet-nav-item" data-page="buildings">Buildings</button>
+        <button class="planet-nav-item" data-page="shipyard">Shipyard</button>
+        <button class="planet-nav-item" data-page="research">Research</button>
+      </div>
     </nav>
 
     <main class="layout">
@@ -54,7 +62,7 @@
 
         <section class="content-column">
         <div class="page-title-row">
-          <div><div class="eyebrow">STAR SYSTEM 1</div><h1 id="page-title">Planet Overview</h1></div>
+          <div><div id="page-context" class="eyebrow">COLONY COMMAND</div><h1 id="page-title">Planet Overview</h1></div>
           <div class="system-clock"><span class="status-dot"></span> SIMULATION ONLINE</div>
         </div>
         <div id="toast" class="toast" role="status" aria-live="polite"></div>

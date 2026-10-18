@@ -11,7 +11,7 @@ This plan turns [the gameplay overview](GAMEPLAY_OVERVIEW.md) into a small, play
 - The game supports building/research/ship queues; attack, espionage, transport, harvest, and colonization missions; NPC respawns; battle reports; plunder; debris; and offline catch-up.
 - Rules and catalogs are provisional single-player values in `src/game/catalog.js`. Treat them as tuning defaults rather than confirmed original-game balance.
 - Automated verification: `npm test` currently covers 16 gameplay and persistence cases.
-- The shared shell and planet overview follow the structure of the user-supplied overview HTML: stacked command bars, owned-planet strip, resource row, grouped navigation, colony profile, overview, and recent activity. Planet artwork is a CSS stand-in; other page views can be aligned as their references arrive.
+- The shared shell and planet overview follow the live SFC structure and palette: stacked command bars, planet strip, resource row, grouped navigation, colony profile, dark starfield, orange headings, cyan links, and red resource totals. Other page views can be refined against their references.
 
 ## Decisions and constraints
 
@@ -77,12 +77,13 @@ Keep static catalogs separate from saves: buildings, technologies, ships, missio
 - [x] A battle creates debris from destroyed ships, and a recycler mission can harvest that debris.
 - [x] Transport moves resources between owned planets and colonization creates a new owned planet.
 - [x] Reloading preserves state; offline simulation advances production and resolves due queues and fleet events chronologically.
-- [x] Adapt the shared shell and planet overview to the supplied SFC HTML structure and verify the page in-browser at a narrow viewport.
+- [x] Adapt the shared shell and planet overview to the live SFC structure and palette; verify desktop, tablet, and phone layouts.
 - [ ] Compare Buildings, Research, Shipyard, Fleet Command, Universe, and Reports against page-specific references when available.
 
 ## Reference material
 
 - [Gameplay overview](GAMEPLAY_OVERVIEW.md) — scoped system summary and source caveats.
+- [UI theme plan](UI_THEME_PLAN.md) — live overview palette, layout reference, and styling checklist.
 - [SFC fleet optimizer](https://github.com/axu930/sfc-fleet-optimizer/tree/12c8a86) — pinned combat source; relevant modules are `js/sfc2-combat.js` and `js/units.js`.
 - [SFC2 combat source](https://github.com/axu930/sfc-fleet-optimizer/blob/12c8a86/js/sfc2-combat.js) — expected-value battle implementation.
 - [SFC2 wiki combat rules](https://playsfc2.com/wiki/combat) — provisional reference for round, shield, and outcome behavior.
