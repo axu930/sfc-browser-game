@@ -947,3 +947,107 @@ footer { border-color: var(--line); color: #929da1; }
   .system-table { min-width: 790px; }
   .empire-table { min-width: 580px; }
 }
+
+.masthead-options {
+  border: 1px solid var(--line-bright);
+  padding: 4px 9px;
+  background: #111719;
+  color: var(--text);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.masthead-options:hover, .masthead-options.active {
+  border-color: #aab5b8;
+  background: #20282b;
+  color: #fff;
+}
+.options-tabs { display: flex; gap: 3px; margin: -2px 0 14px; border-bottom: 1px solid var(--line-bright); }
+.options-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 9px 13px 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.options-tab:hover, .options-tab.active { color: var(--text); }
+.options-tab.active { border-bottom-color: var(--blue-bright); }
+.options-panel { display: grid; gap: 10px; }
+.options-intro { margin-bottom: 2px; }
+.options-intro h2 { font-size: 14px; }
+.options-intro p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.option-setting, .cheat-tool {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, .8fr);
+  align-items: center;
+  gap: 14px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  background: #050809;
+}
+.option-setting-copy, .cheat-tool-copy { display: grid; gap: 4px; }
+.option-setting-copy strong, .cheat-tool-copy strong { color: var(--text); font-size: 12px; }
+.option-setting-copy span, .cheat-tool-copy span { color: var(--muted); font-size: 10px; line-height: 1.45; }
+.option-width-control { display: flex; align-items: center; gap: 12px; }
+.option-width-control input { width: 100%; accent-color: var(--blue-bright); }
+.option-width-control output { min-width: 66px; color: var(--text); font: 11px 'IBM Plex Mono', monospace; text-align: right; }
+.option-select-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+#interface-theme, #cheat-hours {
+  min-height: 34px;
+  border: 1px solid var(--line-bright);
+  padding: 6px 9px;
+  background: #080d0f;
+  color: var(--text);
+}
+.option-actions { display: flex; justify-content: flex-end; padding-top: 2px; }
+.cheat-action-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.cheat-action-row label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+#cheat-hours { width: 78px; }
+
+:root[data-theme="sector-blue"] {
+  color-scheme: dark;
+  --page: #07111d;
+  --surface: #0d1c2a;
+  --surface-raised: #112436;
+  --surface-inset: #081522;
+  --line: #213a50;
+  --line-bright: #36546c;
+  --text: #d7e4ef;
+  --muted: #8197a8;
+  --blue: #59a8df;
+  --blue-bright: #8acafa;
+  --green: #69c991;
+  --amber: #e5b75f;
+  --red: #df7777;
+}
+:root[data-theme="sector-blue"] body { background: radial-gradient(ellipse at 70% -40%, #16324a 0, var(--page) 56%); }
+:root[data-theme="sector-blue"] .masthead-inner,
+:root[data-theme="sector-blue"] .planet-strip,
+:root[data-theme="sector-blue"] .resource-ribbon { background-color: #091522; }
+:root[data-theme="sector-blue"] .main-nav { background: linear-gradient(#14283a, #091522); }
+:root[data-theme="sector-blue"] .planet-nav,
+:root[data-theme="sector-blue"] .command-nav-row { background: #0b1926; }
+:root[data-theme="sector-blue"] .panel,
+:root[data-theme="sector-blue"] .content-card { border-color: var(--line); background: linear-gradient(140deg, #102132, #0b1926 85%); }
+:root[data-theme="sector-blue"] .content-card-header,
+:root[data-theme="sector-blue"] .panel-heading { border-color: var(--line); background: linear-gradient(#172b3b, #0d1c2a); color: var(--text); }
+:root[data-theme="sector-blue"] .nav-item.active,
+:root[data-theme="sector-blue"] .planet-nav-item.active { box-shadow: inset 0 -2px var(--blue); }
+:root[data-theme="sector-blue"] .button { border-color: #345872; background: linear-gradient(#183550, #10263a); color: #cfe7f7; }
+:root[data-theme="sector-blue"] .masthead-options,
+:root[data-theme="sector-blue"] .option-setting,
+:root[data-theme="sector-blue"] .cheat-tool { border-color: var(--line); background: #081522; color: var(--text); }
+:root[data-theme="sector-blue"] .masthead-options:hover,
+:root[data-theme="sector-blue"] .masthead-options.active { border-color: var(--blue-bright); background: #19324a; }
+:root[data-theme="sector-blue"] #interface-theme,
+:root[data-theme="sector-blue"] #cheat-hours { border-color: var(--line-bright); background: #081522; color: var(--text); }
+
+@media (max-width: 560px) {
+  .option-setting, .cheat-tool { grid-template-columns: 1fr; }
+  .cheat-action-row { justify-content: flex-start; }
+}

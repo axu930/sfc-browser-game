@@ -9,10 +9,14 @@ import { createUnclaimedWorldTarget, getSystemSlotLayout, isPlanetSlot, UNIVERSE
 const pageTitles = {
   overview: "All Planets", colonyOverview: "Colony Overview", buildings: "Planetary Buildings", research: "Research Projects",
   shipyard: "Shipyard", fleets: "Fleet Command", universe: "Universe",
-  reports: "Commander Reports"
+  reports: "Commander Reports", options: "Options"
 };
+const INTERFACE_OPTIONS_KEY = "sfc-browser-game-interface-options";
+const DEFAULT_INTERFACE_OPTIONS = Object.freeze({ width: 1067, theme: "graphite" });
 let state = loadState();
 let currentPage = "overview";
+let currentOptionsTab = "interface";
+let interfaceOptions = loadInterfaceOptions();
 let selectedPlanetId = state.planets[0]?.id;
 let selectedUniverseGalaxy = Number(state.planets[0]?.coordinates?.galaxy) || 1;
 let selectedUniverseSystem = Number(state.planets[0]?.coordinates?.system) || 1;
@@ -38,6 +42,35 @@ const costText = cost => RESOURCE_KEYS.map(key => `${key.slice(0, 1).toUpperCase
 const meetsBuilding = (planetData, requirement) => !requirement || (planetData.buildings[requirement.building] || 0) >= requirement.level;
 const meetsResearch = (requirements = {}) => Object.entries(requirements).every(([id, level]) => (state.research[id] || 0) >= level);
 
+function loadInterfaceOptions() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(INTERFACE_OPTIONS_KEY) || "null");
+    const width = Number(saved?.width);
+    const theme = saved?.theme === "sector-blue" ? "sector-blue" : "graphite";
+    return {
+      width: Number.isFinite(width) ? Math.min(1600, Math.max(760, Math.round(width))) : DEFAULT_INTERFACE_OPTIONS.width,
+      theme
+    };
+  } catch {
+    return { ...DEFAULT_INTERFACE_OPTIONS };
+  }
+}
+
+function applyInterfaceOptions() {
+  document.documentElement.style.setProperty("--command-width", `${interfaceOptions.width}px`);
+  document.documentElement.dataset.theme = interfaceOptions.theme;
+}
+
+function saveInterfaceOptions() {
+  try {
+    localStorage.setItem(INTERFACE_OPTIONS_KEY, JSON.stringify(interfaceOptions));
+  } catch {
+    showToast("Interface settings could not be saved in this browser.", true);
+  }
+}
+
+applyInterfaceOptions();
+
 function showToast(message, error = false) {
   const toast = $("#toast");
   toast.textContent = message;
@@ -53,6 +86,35 @@ function pushReport(type, title, text) {
 
 function persist() {
   if (saveState(state)) lastSavedAt = Date.now();
+}
+
+function shiftTimestamp(item, field, offsetMs) {
+  const timestamp = Number(item?.[field]);
+  if (Number.isFinite(timestamp)) item[field] = timestamp - offsetMs;
+}
+
+function cheatTimeSkip(hours) {
+  const wallNow = Date.now();
+  const targetTime = Math.max(Number(state.now) || wallNow, wallNow) + hours * 60 * 60 * 1000;
+  advanceGame(state, targetTime);
+  const rebaseOffset = targetTime - wallNow;
+  for (const world of state.planets) {
+    for (const job of [...(world.constructionQueue || []), ...(world.researchQueue || [])]) {
+      shiftTimestamp(job, "startedAt", rebaseOffset);
+      shiftTimestamp(job, "completesAt", rebaseOffset);
+    }
+  }
+  for (const fleet of state.fleets || []) {
+    shiftTimestamp(fleet, "dispatchedAt", rebaseOffset);
+    shiftTimestamp(fleet, "arrivalAt", rebaseOffset);
+  }
+  for (const target of state.universe?.targets || []) shiftTimestamp(target, "respawnAt", rebaseOffset);
+  for (const report of state.reports || []) shiftTimestamp(report, "at", rebaseOffset);
+  state.now = wallNow;
+  pushReport("system", "Simulation time advanced", `Advanced the simulation by ${hours} hour${hours === 1 ? "" : "s"}.`);
+  persist();
+  render();
+  showToast(`Advanced time by ${hours} hour${hours === 1 ? "" : "s"}.`);
 }
 
 function advanceSimulation() {
@@ -83,9 +145,11 @@ function renderHeader() {
   $("#report-count").textContent = state.reports.length ? `(${Math.min(state.reports.length, 99)})` : "";
   $("#clock-time").textContent = new Date(state.now).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const point = activePlanet?.coordinates;
-  $("#page-context").textContent = isEmpireOverview
-    ? `COMMAND NETWORK · ${state.planets.length} ${state.planets.length === 1 ? "COLONY" : "COLONIES"}`
-    : point ? `GALAXY ${point.galaxy} · SYSTEM ${point.system}` : "COLONY COMMAND";
+  $("#page-context").textContent = currentPage === "options"
+    ? "COMMANDER SETTINGS"
+    : isEmpireOverview
+      ? `COMMAND NETWORK · ${state.planets.length} ${state.planets.length === 1 ? "COLONY" : "COLONIES"}`
+      : point ? `GALAXY ${point.galaxy} · SYSTEM ${point.system}` : "COLONY COMMAND";
   renderSidebar();
 }
 
@@ -353,14 +417,45 @@ function renderReports() {
   return card("Recent Dispatches", reports.length ? reports.map(report => `<article class="report-item"><div class="report-meta"><span>${escapeHtml(report.type || "Report").toUpperCase()}</span><time>${new Date(report.at || state.now).toLocaleString()}</time></div><div class="report-title">${escapeHtml(report.title || "Report")}</div><div class="report-text">${escapeHtml(report.text || "")}</div></article>`).join("") : `<div class="empty-state">No reports received.</div>`);
 }
 
+function renderOptions() {
+  const tabs = `<div class="options-tabs" role="tablist" aria-label="Options categories">
+    <button class="options-tab${currentOptionsTab === "interface" ? " active" : ""}" id="interface-tab" role="tab" aria-selected="${currentOptionsTab === "interface"}" aria-controls="interface-panel" data-options-tab="interface">Interface</button>
+    <button class="options-tab${currentOptionsTab === "cheats" ? " active" : ""}" id="cheats-tab" role="tab" aria-selected="${currentOptionsTab === "cheats"}" aria-controls="cheats-panel" data-options-tab="cheats">Cheat Tools</button>
+  </div>`;
+  const interfacePanel = `<div class="options-panel" id="interface-panel" role="tabpanel" aria-labelledby="interface-tab">
+    <div class="options-intro"><h2>General Interface</h2><p>Adjust the shared width and color scheme. These preferences are saved in this browser.</p></div>
+    <div class="option-setting">
+      <div class="option-setting-copy"><strong>Page width</strong><span>Controls the aligned masthead, navigation, and game content.</span></div>
+      <div class="option-width-control"><input id="interface-width" type="range" min="760" max="1600" step="1" value="${interfaceOptions.width}" aria-label="Page width"><output id="interface-width-value" for="interface-width">${interfaceOptions.width}px</output></div>
+    </div>
+    <div class="option-setting">
+      <div class="option-setting-copy"><strong>Color scheme</strong><span>Choose a graphite monochrome or deep-space blue palette.</span></div>
+      <label class="option-select-label" for="interface-theme">Palette</label><select id="interface-theme"><option value="graphite"${interfaceOptions.theme === "graphite" ? " selected" : ""}>Graphite</option><option value="sector-blue"${interfaceOptions.theme === "sector-blue" ? " selected" : ""}>Sector Blue</option></select>
+    </div>
+    <div class="option-actions"><button class="button" data-reset-interface>Restore defaults</button></div>
+  </div>`;
+  const cheatsPanel = `<div class="options-panel" id="cheats-panel" role="tabpanel" aria-labelledby="cheats-tab">
+    <div class="options-intro"><h2>Cheat Tools</h2><p>Testing controls for this local single-player save. Use them to exercise progression and timed events quickly.</p></div>
+    <div class="cheat-tool">
+      <div class="cheat-tool-copy"><strong>Time skip</strong><span>Advance production, construction, research, fleets, and NPC timers.</span></div>
+      <form id="cheat-timeskip-form" class="cheat-action-row"><label for="cheat-hours">Hours</label><input id="cheat-hours" name="hours" type="number" min="1" max="720" step="1" value="24"><button class="button button-primary" type="submit">Advance time</button></form>
+    </div>
+    <div class="cheat-tool">
+      <div class="cheat-tool-copy"><strong>Resource grant</strong><span>Set the selected colony's Ore, Crystal, and Hydrogen to 1,000,000 each.</span></div>
+      <button class="button button-primary" data-cheat="resources">Set resources high</button>
+    </div>
+  </div>`;
+  return card("Options", `${tabs}${currentOptionsTab === "interface" ? interfacePanel : cheatsPanel}`);
+}
+
 function render() {
   if (!planet()) return;
   renderHeader();
   $(".layout").classList.toggle("empire-overview", currentPage === "overview");
   $("#page-title").textContent = pageTitles[currentPage] || pageTitles.overview;
-  $$(".nav-item, .planet-nav-item").forEach(button => button.classList.toggle("active", button.dataset.page === currentPage));
+  $$(".nav-item, .planet-nav-item, .masthead-options").forEach(button => button.classList.toggle("active", button.dataset.page === currentPage));
   const activePlanet = planet();
-  const renderers = { overview: renderOverview, colonyOverview: renderColonyOverview, buildings: renderBuildings, research: renderResearch, shipyard: renderShipyard, fleets: renderFleets, universe: renderUniverse, reports: renderReports };
+  const renderers = { overview: renderOverview, colonyOverview: renderColonyOverview, buildings: renderBuildings, research: renderResearch, shipyard: renderShipyard, fleets: renderFleets, universe: renderUniverse, reports: renderReports, options: renderOptions };
   $("#game-content").innerHTML = renderers[currentPage](activePlanet);
 }
 
@@ -388,6 +483,28 @@ function act(result) {
 }
 
 document.addEventListener("click", event => {
+  const optionsTab = event.target.closest("[data-options-tab]");
+  if (optionsTab) {
+    currentOptionsTab = optionsTab.dataset.optionsTab;
+    return render();
+  }
+  const resetInterface = event.target.closest("[data-reset-interface]");
+  if (resetInterface) {
+    interfaceOptions = { ...DEFAULT_INTERFACE_OPTIONS };
+    applyInterfaceOptions();
+    saveInterfaceOptions();
+    render();
+    return showToast("Interface settings restored.");
+  }
+  const cheatButton = event.target.closest("[data-cheat]");
+  if (cheatButton?.dataset.cheat === "resources") {
+    const activePlanet = planet();
+    for (const resource of RESOURCE_KEYS) activePlanet.resources[resource] = 1_000_000;
+    pushReport("system", "Test resources granted", `Set ${activePlanet.name}'s resources to 1,000,000 each.`);
+    persist();
+    render();
+    return showToast("Selected colony resources set to 1,000,000 each.");
+  }
   const systemStep = event.target.closest("[data-universe-step]");
   if (systemStep) {
     const delta = Number(systemStep.dataset.delta) || 0;
@@ -471,6 +588,25 @@ document.addEventListener("click", event => {
   if (researchButton) return act(startResearch(state, researchButton.dataset.research, selectedPlanetId));
 });
 
+document.addEventListener("input", event => {
+  if (event.target.id !== "interface-width") return;
+  interfaceOptions.width = Number(event.target.value);
+  document.documentElement.style.setProperty("--command-width", `${interfaceOptions.width}px`);
+  $("#interface-width-value").textContent = `${interfaceOptions.width}px`;
+});
+
+document.addEventListener("change", event => {
+  if (event.target.id === "interface-width") {
+    interfaceOptions.width = Number(event.target.value);
+    saveInterfaceOptions();
+  }
+  if (event.target.id === "interface-theme") {
+    interfaceOptions.theme = event.target.value === "sector-blue" ? "sector-blue" : "graphite";
+    applyInterfaceOptions();
+    saveInterfaceOptions();
+  }
+});
+
 document.addEventListener("submit", event => {
   if (event.target.matches("[data-ship-form]")) {
     event.preventDefault();
@@ -489,6 +625,12 @@ document.addEventListener("submit", event => {
       ships,
       cargo: Object.fromEntries(RESOURCE_KEYS.map(key => [key, Number(data.get(key)) || 0]))
     }));
+  }
+  if (event.target.id === "cheat-timeskip-form") {
+    event.preventDefault();
+    const hours = Number(new FormData(event.target).get("hours"));
+    if (!Number.isInteger(hours) || hours < 1 || hours > 720) return showToast("Choose a time skip between 1 and 720 hours.", true);
+    cheatTimeSkip(hours);
   }
 });
 
